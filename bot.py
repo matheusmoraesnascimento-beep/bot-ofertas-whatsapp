@@ -30,14 +30,16 @@ from filtros import filtrar_melhores_ofertas, remover_repetidas, salvar_em_histo
 
 DRY_RUN = os.getenv("DRY_RUN", "true").lower() == "true"
 
-def enviar_para_grupo_whatsapp(mensagem: str) -> bool:
+def enviar_para_grupo_whatsapp(mensagem: str, imagem_url: str = None) -> bool:
     if DRY_RUN:
         print("\n" + "="*50)
         print(mensagem)
+        if imagem_url:
+            print(f"[IMAGEM: {imagem_url}]")
         print("="*50 + "\n")
         return True
     from whatsapp import enviar_para_grupo_whatsapp as _enviar
-    return _enviar(mensagem)
+    return _enviar(mensagem, imagem_url=imagem_url)
 
 
 def ler_categorias(arquivo="categorias.txt"):
@@ -94,7 +96,7 @@ def executar_rodada():
     enviadas = 0
     for oferta in novas[:MAX_OFERTAS_POR_RODADA]:
         mensagem = montar_mensagem(oferta)
-        sucesso = enviar_para_grupo_whatsapp(mensagem)
+        sucesso = enviar_para_grupo_whatsapp(mensagem, imagem_url=oferta.get("imagem"))
         if sucesso:
             salvar_em_historico(oferta)
             enviadas += 1
