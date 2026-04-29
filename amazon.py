@@ -1,14 +1,13 @@
 import os
-import time
-import random
-import logging
 import re
+import logging
+import requests
 from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright
 
 logger = logging.getLogger(__name__)
 
 ASSOCIATE_TAG = os.getenv("AMAZON_ASSOCIATE_TAG", "")
+SCRAPERAPI_KEY = os.getenv("SCRAPERAPI_KEY", "")
 
 
 def _montar_link(asin: str) -> str:
@@ -27,29 +26,28 @@ def _extrair_preco(texto: str):
 
 
 def buscar_ofertas_amazon(categoria: str) -> list:
+    if not SCRAPERAPI_KEY:
+        logger.error("Amazon: SCRAPERAPI_KEY não configurado")
+        return []
     if not ASSOCIATE_TAG:
         logger.warning("Amazon: AMAZON_ASSOCIATE_TAG não configurado")
 
-    url = f"https://www.amazon.com.br/s?k={categoria.replace(' ', '+')}&sort=review-rank"
+    target = f"https://www.amazon.com.br/s?k={categoria.replace(' ', '+')}&sort=review-rank"
+    proxy_url = f"http://api.scraperapi.com?api_key={SCRAPERAPI_KEY}&url={target}&country_code=br"
 
     try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            page = browser.new_page()
-            page.set_extra_http_headers({"Accept-Language": "pt-BR,pt;q=0.9"})
-            page.goto(url, timeout=30000, wait_until="domcontentloaded")
-            time.sleep(random.uniform(2, 4))
-            html = page.content()
-            browser.close()
+        resp = requests.get(proxy_url, timeout=60)
+        resp.raise_for_status()
+        html = resp.text
     except Exception as e:
-        logger.error(f"Amazon Playwright erro [{categoria}]: {e}")
+        logger.error(f"Amazon ScraperAPI erro [{categoria}]: {e}")
         return []
 
     soup = BeautifulSoup(html, "html.parser")
     cards = soup.select("div[data-asin][data-component-type='s-search-result']")
 
     ofertas = []
-    for card in cards[:10]:
+    for card in cards[:20]:
         try:
             asin = card.get("data-asin", "").strip()
             if not asin:

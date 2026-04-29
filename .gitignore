@@ -3,3 +3,7 @@ __pycache__/
 *.pyc
 debug_*.py
 debug_*.png
+
+bot.log
+bot.pid
+config.env

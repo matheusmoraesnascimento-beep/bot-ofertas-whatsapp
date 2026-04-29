@@ -43,10 +43,22 @@ def enviar_para_grupo_whatsapp(mensagem: str, imagem_url: str = None):
         imagem_path = _baixar_imagem(imagem_url)
 
     with sync_playwright() as p:
+        proxy_url = os.getenv("http_proxy") or os.getenv("HTTP_PROXY", "")
+        proxy_cfg = None
+        if proxy_url:
+            from urllib.parse import urlparse
+            p_parsed = urlparse(proxy_url)
+            proxy_cfg = {
+                "server": f"{p_parsed.scheme}://{p_parsed.hostname}:{p_parsed.port}",
+                "username": p_parsed.username or "",
+                "password": p_parsed.password or "",
+            }
+
         browser = p.chromium.launch_persistent_context(
             user_data_dir=SESSION_DIR,
             headless=False,
-            args=["--no-sandbox"],
+            args=["--no-sandbox", "--start-minimized"],
+            proxy=proxy_cfg,
         )
         page = browser.new_page()
 
