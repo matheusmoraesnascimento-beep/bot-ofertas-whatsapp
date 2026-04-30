@@ -19,9 +19,67 @@ def _extrair_preco(texto: str):
     if not texto:
         return None
     try:
-        limpo = texto.replace("R$", "").replace("\xa0", "").replace(".", "").replace(",", ".").strip()
-        return float(limpo)
-    except ValueError:
+        texto_original = texto.lower()
+
+        # 1. BLOQUEIO CRÍTICO: Se contiver barra ou unidades de medida no texto do preço, 
+        # ignoramos, pois a Amazon coloca o preço por unidade/kg/litro nesse formato.
+        indicadores_unidade = ["/", "kg", " g", "ml", "litro", "unidade", "oz"]
+        if any(ind in texto_original for ind in indicadores_unidade):
+            return None
+
+        # 2. Remove qualquer coisa entre parênteses
+        texto = re.sub(r"\(.*?\)", "", texto)
+
+        # 3. Se houver múltiplos "R$", pega apenas o primeiro bloco
+        if "R$" in texto:
+            partes = texto.split("R$")
+            for p in partes:
+                if any(char.isdigit() for char in p):
+                    p_limpo = re.sub(r"[^\d,.]", "", p)
+                    if p_limpo:
+                        texto = p
+                        break
+
+
+        # Remove símbolos e espaços, mantendo apenas dígitos, vírgulas e pontos
+        texto_limpo = re.sub(r"[^\d,.]", "", texto)
+        
+        if not texto_limpo:
+            return None
+            
+        # Tenta detectar se o texto está duplicado (ex: "10,0010,00")
+        meio = len(texto_limpo) // 2
+        if len(texto_limpo) > 4 and texto_limpo[:meio] == texto_limpo[meio:]:
+            texto_limpo = texto_limpo[:meio]
+
+        # Lógica para decidir separador decimal
+        if "," in texto_limpo and "." in texto_limpo:
+            if texto_limpo.rfind(",") > texto_limpo.rfind("."):
+                # Formato BR: 1.299,00
+                final = texto_limpo.replace(".", "").replace(",", ".")
+            else:
+                # Formato US: 1,299.00
+                final = texto_limpo.replace(",", "")
+        elif "," in texto_limpo:
+            # Apenas vírgula: 12,99
+            final = texto_limpo.replace(",", ".")
+        elif "." in texto_limpo:
+            partes = texto_limpo.split(".")
+            # Se tiver mais de um ponto, é separador de milhar: 1.299.000
+            if len(partes) > 2:
+                final = texto_limpo.replace(".", "")
+            # Se o último bloco tiver 2 dígitos, provavelmente é decimal US: 12.99
+            elif len(partes[-1]) == 2:
+                final = texto_limpo
+            # Caso contrário, assume-se milhar: 1.299
+            else:
+                final = texto_limpo.replace(".", "")
+        else:
+            final = texto_limpo
+
+        return float(final)
+    except Exception as e:
+        logger.debug(f"Erro ao extrair preço '{texto}': {e}")
         return None
 
 
@@ -58,25 +116,48 @@ def buscar_ofertas_amazon(categoria: str) -> list:
             if not titulo:
                 continue
 
-            preco_el = card.select_one("span.a-price > span.a-offscreen")
+            # 1. Tenta pegar a porcentagem de desconto direta (ex: -15%)
+            # Amazon costuma usar classes como 'savingsPercentage' ou texto com '-' e '%'
+            desconto_direto = 0.0
+            perc_el = card.select_one("span[class*='savingsPercentage'], .a-color-price")
+            if perc_el:
+                texto_perc = perc_el.get_text().strip()
+                m = re.search(r"-?(\d+)%", texto_perc)
+                if m:
+                    desconto_direto = float(m.group(1))
+
+            # 2. Preço Atual — exclui secundário (por unidade) e riscado (De:)
+            preco_el = card.select_one(
+                ".a-price:not([data-a-color='secondary']):not([data-a-strike='true']) span.a-offscreen"
+            )
             preco_atual = _extrair_preco(preco_el.get_text() if preco_el else None)
+
             if not preco_atual:
                 continue
 
-            preco_antigo_el = card.select_one("span.a-price.a-text-price > span.a-offscreen")
+            # 3. Preço Antigo — somente o "De:" riscado (data-a-strike="true")
+            preco_antigo_el = card.select_one("span.a-price[data-a-strike='true'] span.a-offscreen")
             preco_antigo = _extrair_preco(preco_antigo_el.get_text() if preco_antigo_el else None)
 
+            # Sanidade: antigo deve ser maior que atual e não absurdo (>10x)
+            if preco_antigo and (preco_antigo <= preco_atual or preco_antigo > preco_atual * 10):
+                preco_antigo = None
+
+            # 4. Lógica de decisão de desconto
             desconto = 0.0
-            if preco_antigo and preco_antigo > preco_atual:
+            if desconto_direto > 0:
+                desconto = desconto_direto
+                # Se temos o desconto real, calculamos o preço antigo correto se o capturado estiver errado
+                # (ex: se o capturado for o preço por kg, recalculamos o correto baseado no atual)
+                if not preco_antigo or abs((1 - preco_atual/preco_antigo)*100 - desconto) > 10:
+                    preco_antigo = round(preco_atual / (1 - desconto / 100), 2)
+            elif preco_antigo and preco_antigo > preco_atual:
                 desconto = round((1 - preco_atual / preco_antigo) * 100, 1)
-            else:
-                badge_el = card.select_one("span.a-badge-label")
-                if badge_el:
-                    m = re.search(r"(\d+)%", badge_el.get_text())
-                    if m:
-                        desconto = float(m.group(1))
-                        if not preco_antigo:
-                            preco_antigo = round(preco_atual / (1 - desconto / 100), 2)
+
+            # Trava final de segurança para evitar erros de unidade
+            if desconto > 80:
+                logger.debug(f"Amazon: Desconto de {desconto}% ignorado por ser irreal em '{titulo}'")
+                continue
 
             img_el = card.select_one("img.s-image")
             imagem = img_el.get("src") if img_el else None
