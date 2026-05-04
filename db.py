@@ -53,6 +53,7 @@ def salvar_oferta(oferta: dict):
                 datetime.now().isoformat(),
             ),
         )
+        con.commit()
 
 
 def listar_ofertas(limit: int = 200) -> list[dict]:
@@ -81,4 +82,5 @@ def migrar_csv(csv_path: str = "ofertas_enviadas.csv"):
                 (r.get("produto"), r.get("loja"), r.get("preco"),
                  r.get("link"), r.get("data_envio")),
             )
+        con.commit()
     print(f"Migrados {len(rows)} registros do CSV")
