@@ -25,6 +25,17 @@ def init_db():
         """)
         con.execute("CREATE INDEX IF NOT EXISTS idx_link ON ofertas_enviadas(link)")
         con.execute("CREATE INDEX IF NOT EXISTS idx_data ON ofertas_enviadas(data_envio)")
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS historico_precos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                link TEXT NOT NULL,
+                produto TEXT,
+                loja TEXT,
+                preco REAL NOT NULL,
+                data TEXT NOT NULL
+            )
+        """)
+        con.execute("CREATE INDEX IF NOT EXISTS idx_hp_link ON historico_precos(link)")
 
 
 def ja_enviado(link: str, horas: int = 24) -> bool:
@@ -84,3 +95,23 @@ def migrar_csv(csv_path: str = "ofertas_enviadas.csv"):
             )
         con.commit()
     print(f"Migrados {len(rows)} registros do CSV")
+
+
+def registrar_preco(oferta: dict):
+    with _conn() as con:
+        con.execute(
+            "INSERT INTO historico_precos (link, produto, loja, preco, data) VALUES (?,?,?,?,?)",
+            (oferta["link_afiliado"], oferta.get("produto"), oferta.get("loja"),
+             oferta["preco_atual"], datetime.now().isoformat()),
+        )
+        con.commit()
+
+
+def preco_minimo_historico(link: str, dias: int = 30) -> float | None:
+    limite = (datetime.now() - timedelta(days=dias)).isoformat()
+    with _conn() as con:
+        row = con.execute(
+            "SELECT MIN(preco) FROM historico_precos WHERE link = ? AND data > ?",
+            (link, limite),
+        ).fetchone()
+    return row[0] if row and row[0] is not None else None
