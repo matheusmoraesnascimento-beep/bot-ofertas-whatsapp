@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Bot Ofertas — Painel</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: sans-serif; background: #f0f2f5; margin: 0; padding: 1rem; }
+    h1 { color: #128C7E; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; }
+    .card { background: white; border-radius: 8px; padding: 1rem; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+    .card h3 { margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: .5rem; }
+    table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    th, td { text-align: left; padding: .4rem; border-bottom: 1px solid #f0f0f0; }
+    input, select { width: 100%; padding: .4rem; margin: .2rem 0 .6rem; border: 1px solid #ccc; border-radius: 4px; }
+    button { padding: .5rem 1rem; border: none; border-radius: 4px; cursor: pointer; margin: .2rem; }
+    .btn-green { background: #25D366; color: white; }
+    .btn-red { background: #e74c3c; color: white; }
+    .btn-blue { background: #3498db; color: white; }
+    .badge { padding: .2rem .5rem; border-radius: 12px; font-size: .8rem; }
+    .badge-ok { background: #d4edda; color: #155724; }
+    .badge-err { background: #f8d7da; color: #721c24; }
+    textarea { width: 100%; height: 120px; padding: .4rem; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; }
+    nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+  <nav>
+    <h1>🤖 Bot Ofertas — Painel</h1>
+    <a href="/logout">Sair</a>
+  </nav>
+
+  <div class="grid">
+    <!-- Status -->
+    <div class="card">
+      <h3>Status</h3>
+      <p id="status-text">Carregando...</p>
+      <p><small>Última rodada: <span id="ultima-rodada">—</span></small></p>
+      <p><small>Próxima rodada: <span id="proxima-rodada">—</span></small></p>
+      <button class="btn-green" onclick="forcarRodada()">▶ Forçar rodada agora</button>
+      <button class="btn-red" id="btn-pausar" onclick="togglePausar()">⏸ Pausar</button>
+    </div>
+
+    <!-- Config -->
+    <div class="card">
+      <h3>Configuração</h3>
+      <label>Desconto mínimo (%)</label>
+      <input type="number" id="MIN_DESCONTO">
+      <label>Máx. ofertas por rodada</label>
+      <input type="number" id="MAX_OFERTAS_POR_RODADA">
+      <label>Intervalo entre posts (seg)</label>
+      <input type="number" id="INTERVALO_ENTRE_POSTS">
+      <label>Rodar a cada (min)</label>
+      <input type="number" id="RODAR_A_CADA_MINUTOS">
+      <label>Hora início</label>
+      <input type="number" id="HORA_INICIO">
+      <label>Hora fim</label>
+      <input type="number" id="HORA_FIM">
+      <button class="btn-blue" onclick="salvarConfig()">💾 Salvar</button>
+    </div>
+
+    <!-- Categorias -->
+    <div class="card">
+      <h3>Categorias</h3>
+      <textarea id="categorias-txt"></textarea>
+      <button class="btn-blue" onclick="salvarCategorias()">💾 Salvar categorias</button>
+    </div>
+
+    <!-- Histórico -->
+    <div class="card" style="grid-column: 1 / -1;">
+      <h3>Últimas ofertas enviadas</h3>
+      <table>
+        <thead><tr><th>Produto</th><th>Loja</th><th>Preço</th><th>Desc%</th><th>Data</th></tr></thead>
+        <tbody id="tabela-ofertas"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    async function get(url) { const r = await fetch(url); return r.json(); }
+    async function post(url, data) { const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data)}); return r.json(); }
+
+    async function carregarStatus() {
+      const s = await get('/api/status');
+      document.getElementById('status-text').innerHTML = s.pausado
+        ? '<span class="badge badge-err">⏸ Pausado</span>'
+        : '<span class="badge badge-ok">✅ Rodando</span>';
+      document.getElementById('ultima-rodada').textContent = s.ultima_rodada ? new Date(s.ultima_rodada).toLocaleString('pt-BR') : '—';
+      document.getElementById('proxima-rodada').textContent = s.proxima_rodada ? new Date(s.proxima_rodada).toLocaleString('pt-BR') : '—';
+      document.getElementById('btn-pausar').textContent = s.pausado ? '▶ Retomar' : '⏸ Pausar';
+    }
+
+    async function carregarConfig() {
+      const c = await get('/api/config');
+      ['MIN_DESCONTO','MAX_OFERTAS_POR_RODADA','INTERVALO_ENTRE_POSTS','RODAR_A_CADA_MINUTOS','HORA_INICIO','HORA_FIM'].forEach(k => {
+        const el = document.getElementById(k); if (el) el.value = c[k] || '';
+      });
+    }
+
+    async function carregarCategorias() {
+      const cats = await get('/api/categorias');
+      document.getElementById('categorias-txt').value = cats.join('\n');
+    }
+
+    async function carregarOfertas() {
+      const ofertas = await get('/api/ofertas');
+      const tbody = document.getElementById('tabela-ofertas');
+      tbody.innerHTML = ofertas.map(o => `
+        <tr>
+          <td>${o.produto.substring(0,50)}</td>
+          <td>${o.loja}</td>
+          <td>R$ ${Number(o.preco).toFixed(2)}</td>
+          <td>${o.desconto || 0}%</td>
+          <td>${new Date(o.data_envio).toLocaleString('pt-BR')}</td>
+        </tr>`).join('');
+    }
+
+    async function salvarConfig() {
+      const data = {};
+      ['MIN_DESCONTO','MAX_OFERTAS_POR_RODADA','INTERVALO_ENTRE_POSTS','RODAR_A_CADA_MINUTOS','HORA_INICIO','HORA_FIM'].forEach(k => {
+        data[k] = document.getElementById(k).value;
+      });
+      await post('/api/config', data);
+      alert('Config salva!');
+    }
+
+    async function salvarCategorias() {
+      const cats = document.getElementById('categorias-txt').value.split('\n').map(s => s.trim()).filter(Boolean);
+      await post('/api/categorias', {categorias: cats});
+      alert('Categorias salvas!');
+    }
+
+    let pausado = false;
+    async function togglePausar() {
+      pausado = !pausado;
+      await post('/api/pausar', {pausado});
+      carregarStatus();
+    }
+
+    async function forcarRodada() {
+      await post('/api/forcar-rodada', {});
+      alert('Rodada agendada!');
+    }
+
+    carregarStatus(); carregarConfig(); carregarCategorias(); carregarOfertas();
+    setInterval(carregarStatus, 15000);
+  </script>
+</body>
+</html>
