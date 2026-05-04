@@ -193,6 +193,8 @@ def main():
 
         if not dentro_da_janela() and not consumir_forca():
             hora = datetime.now().hour
+            proxima = (datetime.now() + timedelta(minutes=RODAR_A_CADA_MINUTOS)).isoformat()
+            salvar_estado("fora_da_janela", proxima_rodada=proxima)
             logger.info(f"Fora da janela ({hora}h). Aguardando...")
             _aguardar_com_forca(RODAR_A_CADA_MINUTOS * 60)
             continue
