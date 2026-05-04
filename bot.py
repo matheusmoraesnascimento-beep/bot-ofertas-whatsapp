@@ -32,6 +32,7 @@ from shopee import buscar_ofertas_shopee
 from mercadolivre import buscar_ofertas_mercadolivre
 from filtros import filtrar_melhores_ofertas, remover_repetidas, salvar_em_historico
 from painel.state import salvar_estado, esta_pausado, consumir_forca
+from inteligencia import calcular_score, categoria_ativa, registrar_precos
 
 DRY_RUN = os.getenv("DRY_RUN", "true").lower() == "true"
 
@@ -116,6 +117,9 @@ def executar_rodada():
 
     ofertas = []
     for categoria in categorias:
+        if not categoria_ativa(categoria):
+            logger.info(f"Pulando {categoria} (fora da janela da categoria)")
+            continue
         logger.info(f"Buscando: {categoria}")
         try:
             ofertas.extend(buscar_ofertas_amazon(categoria))
@@ -132,8 +136,13 @@ def executar_rodada():
 
     logger.info(f"Total bruto: {len(ofertas)} ofertas")
 
+    registrar_precos(ofertas)
     filtradas = filtrar_melhores_ofertas(ofertas, MIN_DESCONTO)
     logger.info(f"Após filtro desconto: {len(filtradas)}")
+
+    for o in filtradas:
+        o["_score"] = calcular_score(o)
+    filtradas.sort(key=lambda o: o["_score"], reverse=True)
 
     novas = remover_repetidas(filtradas)
     logger.info(f"Após dedup 24h: {len(novas)} — enviando até {MAX_OFERTAS_POR_RODADA}")
