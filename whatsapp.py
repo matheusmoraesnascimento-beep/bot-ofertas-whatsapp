@@ -56,11 +56,18 @@ def enviar_para_grupo_whatsapp(mensagem: str, imagem_url: str = None):
 
         browser = p.chromium.launch_persistent_context(
             user_data_dir=SESSION_DIR,
-            headless=False,
-            args=["--no-sandbox", "--start-minimized"],
+            headless=True,
+            args=[
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-blink-features=AutomationControlled",
+            ],
+            ignore_default_args=["--enable-automation"],
+            user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             proxy=proxy_cfg,
         )
         page = browser.new_page()
+        page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 
         try:
             page.goto("https://web.whatsapp.com", timeout=60000)
