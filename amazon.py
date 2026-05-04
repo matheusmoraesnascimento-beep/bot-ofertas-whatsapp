@@ -162,6 +162,29 @@ def buscar_ofertas_amazon(categoria: str) -> list:
             img_el = card.select_one("img.s-image")
             imagem = img_el.get("src") if img_el else None
 
+            # Rating (estrelas)
+            rating = None
+            rating_el = card.select_one("i.a-icon-star-small span.a-icon-alt, i.a-icon-star span.a-icon-alt")
+            if rating_el:
+                m = re.search(r"([\d,\.]+)\s*de\s*5", rating_el.get_text())
+                if m:
+                    try:
+                        rating = float(m.group(1).replace(",", "."))
+                    except ValueError:
+                        rating = None
+
+            # Número de avaliações
+            num_reviews = None
+            reviews_el = card.select_one("span.a-size-base.s-underline-text, a[aria-label*='avaliações'] span")
+            if reviews_el:
+                txt = reviews_el.get_text(strip=True).replace(".", "").replace(",", "")
+                m = re.search(r"\d+", txt)
+                if m:
+                    try:
+                        num_reviews = int(m.group(0))
+                    except ValueError:
+                        num_reviews = None
+
             ofertas.append({
                 "produto": titulo,
                 "loja": "Amazon",
@@ -171,6 +194,8 @@ def buscar_ofertas_amazon(categoria: str) -> list:
                 "link_afiliado": _montar_link(asin),
                 "imagem": imagem,
                 "categoria": categoria,
+                "rating": rating,
+                "num_reviews": num_reviews,
             })
         except Exception as e:
             logger.debug(f"Amazon: erro card — {e}")

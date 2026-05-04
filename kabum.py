@@ -23,7 +23,7 @@ def buscar_ofertas_kabum(categoria: str) -> list:
         return []
 
     target = f"https://www.kabum.com.br/busca/{quote(categoria)}?sort=0"
-    proxy_url = f"http://api.scraperapi.com?api_key={SCRAPERAPI_KEY}&url={quote(target)}&country_code=br"
+    proxy_url = f"http://api.scraperapi.com?api_key={SCRAPERAPI_KEY}&url={target}&country_code=br"
 
     try:
         resp = requests.get(proxy_url, timeout=60)

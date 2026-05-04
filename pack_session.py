@@ -17,7 +17,10 @@ with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for file in files:
             filepath = os.path.join(root, file)
             arcname = os.path.relpath(filepath, os.path.dirname(SESSION_DIR))
-            zf.write(filepath, arcname)
+            try:
+                zf.write(filepath, arcname)
+            except (PermissionError, OSError):
+                pass  # lockfiles em uso
 
 b64 = base64.b64encode(buf.getvalue()).decode()
 print(f"Tamanho zip: {len(buf.getvalue()) // 1024} KB  |  base64: {len(b64)} chars")
