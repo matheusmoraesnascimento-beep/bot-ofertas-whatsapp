@@ -121,46 +121,60 @@ def _abrir_grupo(page, nome_grupo: str):
 
 
 def _enviar_imagem_com_legenda(page, imagem_path: str, legenda: str):
-    try:
-        # 1. Click Anexar
-        page.locator('[aria-label="Anexar"]').first.click()
-        time.sleep(1.5)
+    CAPTION_SELECTORS = [
+        '[contenteditable="true"][data-tab="6"]',
+        'div[role="textbox"][aria-label*="egenda"]',
+        'div[role="textbox"][aria-placeholder*="egenda"]',
+        '[contenteditable="true"]:not([data-tab="10"])',
+    ]
 
-        # 2. Click "Fotos e vídeos" e intercepta file chooser
-        with page.expect_file_chooser(timeout=10000) as fc_info:
-            page.get_by_text("Fotos e vídeos", exact=False).first.click()
-        fc = fc_info.value
-        fc.set_files(imagem_path)
-        time.sleep(4)
-
-        # 3. Aguarda modal de preview e digita legenda
-        # Campo de legenda = primeiro contenteditable sem data-tab="10"
-        caption = page.locator('[contenteditable="true"]:not([data-tab="10"])').first
-        caption.wait_for(timeout=10000)
-        caption.click()
-
-        linhas = legenda.split("\n")
-        for i, linha in enumerate(linhas):
-            caption.type(linha, delay=20)
-            if i < len(linhas) - 1:
-                page.keyboard.press("Shift+Enter")
-
-        time.sleep(2)
-        page.keyboard.press("Enter")
-        _delay()
-        logger.info("Imagem com legenda enviada")
-
-    except Exception as e:
-        logger.warning(f"Falha ao enviar imagem, enviando só texto: {e}")
-        # Fecha modal se aberto
+    for tentativa in range(3):
         try:
-            page.keyboard.press("Escape")
-            time.sleep(1)
-            page.keyboard.press("Escape")
-            time.sleep(1)
-        except Exception:
-            pass
-        _enviar_mensagem(page, legenda)
+            page.locator('[aria-label="Anexar"]').first.click()
+            time.sleep(2)
+
+            with page.expect_file_chooser(timeout=12000) as fc_info:
+                page.get_by_text("Fotos e vídeos", exact=False).first.click()
+            fc_info.value.set_files(imagem_path)
+            time.sleep(5)
+
+            caption = None
+            for sel in CAPTION_SELECTORS:
+                try:
+                    el = page.locator(sel).first
+                    el.wait_for(state="visible", timeout=5000)
+                    caption = el
+                    break
+                except Exception:
+                    continue
+
+            if caption is None:
+                raise RuntimeError("caption field not found")
+
+            caption.click()
+            for i, linha in enumerate(legenda.split("\n")):
+                caption.type(linha, delay=20)
+                if i < len(legenda.split("\n")) - 1:
+                    page.keyboard.press("Shift+Enter")
+
+            time.sleep(2)
+            page.keyboard.press("Enter")
+            _delay()
+            logger.info(f"Imagem enviada (tentativa {tentativa + 1})")
+            return
+
+        except Exception as e:
+            logger.warning(f"Tentativa {tentativa + 1}/3 falhou: {e}")
+            try:
+                page.keyboard.press("Escape")
+                time.sleep(1.5)
+                page.keyboard.press("Escape")
+                time.sleep(1.5)
+            except Exception:
+                pass
+
+    logger.warning("Todas tentativas falharam — enviando texto simples")
+    _enviar_mensagem(page, legenda)
 
 
 def _enviar_mensagem(page, mensagem: str):
