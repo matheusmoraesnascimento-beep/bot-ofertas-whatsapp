@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 from amazon import buscar_ofertas_amazon
 from shopee import buscar_ofertas_shopee
 from mercadolivre import buscar_ofertas_mercadolivre
+from kabum import buscar_ofertas_kabum
 from filtros import filtrar_melhores_ofertas, remover_repetidas, salvar_em_historico
 from painel.state import salvar_estado, esta_pausado, consumir_forca
 from inteligencia import calcular_score, categoria_ativa, registrar_precos
@@ -133,6 +134,10 @@ def executar_rodada():
             ofertas.extend(buscar_ofertas_mercadolivre(categoria))
         except Exception as e:
             logger.error(f"ML falhou [{categoria}]: {e}")
+        try:
+            ofertas.extend(buscar_ofertas_kabum(categoria))
+        except Exception as e:
+            logger.error(f"Kabum falhou [{categoria}]: {e}")
 
     logger.info(f"Total bruto: {len(ofertas)} ofertas")
 
