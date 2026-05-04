@@ -53,12 +53,6 @@
       <input type="number" id="MAX_OFERTAS_POR_RODADA">
       <label>Intervalo entre posts (seg)</label>
       <input type="number" id="INTERVALO_ENTRE_POSTS">
-      <label>Rodar a cada (min)</label>
-      <input type="number" id="RODAR_A_CADA_MINUTOS">
-      <label>Hora início</label>
-      <input type="number" id="HORA_INICIO">
-      <label>Hora fim</label>
-      <input type="number" id="HORA_FIM">
       <button class="btn-blue" onclick="salvarConfig()">💾 Salvar</button>
     </div>
 
@@ -104,7 +98,7 @@
 
     async function carregarConfig() {
       const c = await get('/api/config');
-      ['MIN_DESCONTO','MAX_OFERTAS_POR_RODADA','INTERVALO_ENTRE_POSTS','RODAR_A_CADA_MINUTOS','HORA_INICIO','HORA_FIM'].forEach(k => {
+      ['MIN_DESCONTO','MAX_OFERTAS_POR_RODADA','INTERVALO_ENTRE_POSTS'].forEach(k => {
         const el = document.getElementById(k); if (el) el.value = c[k] || '';
       });
     }
@@ -129,7 +123,7 @@
 
     async function salvarConfig() {
       const data = {};
-      ['MIN_DESCONTO','MAX_OFERTAS_POR_RODADA','INTERVALO_ENTRE_POSTS','RODAR_A_CADA_MINUTOS','HORA_INICIO','HORA_FIM'].forEach(k => {
+      ['MIN_DESCONTO','MAX_OFERTAS_POR_RODADA','INTERVALO_ENTRE_POSTS'].forEach(k => {
         data[k] = document.getElementById(k).value;
       });
       await post('/api/config', data);

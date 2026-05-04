@@ -165,8 +165,26 @@ def executar_rodada():
     novas = remover_repetidas(filtradas)
     logger.info(f"Após dedup 24h: {len(novas)} — enviando até {MAX_OFERTAS_POR_RODADA}")
 
+    # Garante 1 produto por categoria (rotatividade)
+    selecionadas = []
+    cats_usadas = set()
+    for o in novas:
+        cat = o.get("categoria", "")
+        if cat not in cats_usadas:
+            selecionadas.append(o)
+            cats_usadas.add(cat)
+        if len(selecionadas) >= MAX_OFERTAS_POR_RODADA:
+            break
+    # Se não encheu, completa com categorias repetidas (melhor score)
+    if len(selecionadas) < MAX_OFERTAS_POR_RODADA:
+        for o in novas:
+            if o not in selecionadas:
+                selecionadas.append(o)
+            if len(selecionadas) >= MAX_OFERTAS_POR_RODADA:
+                break
+
     enviadas = 0
-    for oferta in novas[:MAX_OFERTAS_POR_RODADA]:
+    for oferta in selecionadas:
         mensagem = montar_mensagem(oferta)
         sucesso = enviar_para_grupo_whatsapp(mensagem, imagem_url=oferta.get("imagem"))
         if sucesso:
