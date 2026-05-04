@@ -120,7 +120,7 @@ def _abrir_grupo(page, nome_grupo: str):
         raise RuntimeError(f"Não foi possível abrir grupo '{nome_grupo}': {e}")
 
 
-def _enviar_imagem_com_legenda(page, imagem_path: str, legenda: str):
+def _enviar_imagem_com_legenda(page, imagem_path: str, legenda: str) -> None:
     CAPTION_SELECTORS = [
         '[contenteditable="true"][data-tab="6"]',
         'div[role="textbox"][aria-label*="egenda"]',
@@ -145,16 +145,18 @@ def _enviar_imagem_com_legenda(page, imagem_path: str, legenda: str):
                     el.wait_for(state="visible", timeout=5000)
                     caption = el
                     break
-                except Exception:
+                except Exception as sel_err:
+                    logger.debug(f"Seletor {sel!r} falhou: {sel_err}")
                     continue
 
             if caption is None:
-                raise RuntimeError("caption field not found")
+                raise RuntimeError(f"caption field not found (tried {len(CAPTION_SELECTORS)} selectors)")
 
             caption.click()
-            for i, linha in enumerate(legenda.split("\n")):
+            linhas = legenda.split("\n")
+            for i, linha in enumerate(linhas):
                 caption.type(linha, delay=20)
-                if i < len(legenda.split("\n")) - 1:
+                if i < len(linhas) - 1:
                     page.keyboard.press("Shift+Enter")
 
             time.sleep(2)
