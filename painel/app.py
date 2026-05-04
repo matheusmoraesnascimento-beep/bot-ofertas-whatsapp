@@ -134,26 +134,28 @@ def _run_wa_auth():
                 user_data_dir=SESSION_DIR,
                 headless=True,
                 args=["--no-sandbox", "--disable-dev-shm-usage"],
+                user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             )
             page = browser.new_page()
             page.goto("https://web.whatsapp.com", timeout=60000)
+            time.sleep(8)  # aguarda JS carregar
 
             # Espera QR aparecer ou já estar logado
-            for _ in range(30):
-                if page.query_selector('canvas[aria-label="Scan me!"], canvas[aria-label*="QR"]'):
+            for _ in range(40):
+                if page.query_selector('canvas, div[data-ref]'):
                     break
-                if page.query_selector('div[aria-label="Lista de conversas"]'):
+                if page.query_selector('div[aria-label="Lista de conversas"], div[data-testid="chat-list"]'):
                     _wa_state["status"] = "logged_in"
                     browser.close()
                     return
-                time.sleep(2)
+                time.sleep(3)
 
             # Tira screenshot só da área do QR
-            qr_el = page.query_selector('canvas[aria-label="Scan me!"], canvas[aria-label*="QR"]')
+            qr_el = page.query_selector('div[data-ref] canvas, canvas[aria-label*="QR"], canvas[aria-label*="Scan"]')
             if qr_el:
                 png = qr_el.screenshot()
             else:
-                png = page.screenshot()
+                png = page.screenshot(full_page=False)
             _wa_state["qr_png"] = png
             _wa_state["status"] = "qr_ready"
 
