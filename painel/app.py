@@ -133,10 +133,16 @@ def _run_wa_auth():
             browser = pw.chromium.launch_persistent_context(
                 user_data_dir=SESSION_DIR,
                 headless=True,
-                args=["--no-sandbox", "--disable-dev-shm-usage"],
+                args=[
+                    "--no-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-blink-features=AutomationControlled",
+                ],
                 user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                ignore_default_args=["--enable-automation"],
             )
             page = browser.new_page()
+            page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
             page.goto("https://web.whatsapp.com", timeout=60000)
             time.sleep(8)  # aguarda JS carregar
 
