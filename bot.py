@@ -16,9 +16,8 @@ load_dotenv("config.env")
 MIN_DESCONTO = int(os.getenv("MIN_DESCONTO", "20"))
 MAX_OFERTAS_POR_RODADA = int(os.getenv("MAX_OFERTAS_POR_RODADA", "5"))
 INTERVALO_ENTRE_POSTS = int(os.getenv("INTERVALO_ENTRE_POSTS", "60"))
-RODAR_A_CADA_MINUTOS = int(os.getenv("RODAR_A_CADA_MINUTOS", "30"))
-HORA_INICIO = int(os.getenv("HORA_INICIO", "8"))
-HORA_FIM = int(os.getenv("HORA_FIM", "22"))
+# Horários fixos de execução (Brasília) — ex: "8,18"
+HORARIOS_EXECUCAO = [int(h) for h in os.getenv("HORARIOS_EXECUCAO", "8,18").split(",") if h.strip()]
 
 logging.basicConfig(
     level=logging.INFO,
@@ -99,24 +98,26 @@ def montar_mensagem(oferta: dict) -> str:
     return "\n".join(linhas)
 
 
-def _aguardar_com_forca(segundos: int):
-    """Dorme em fatias de 30s, acorda cedo se forçar rodada."""
-    from painel.state import consumir_forca as _forca
-    elapsed = 0
-    while elapsed < segundos:
-        time.sleep(30)
-        elapsed += 30
-        if _forca():
-            logger.info("Força rodada detectada — acordando cedo.")
-            return
-
-
-def dentro_da_janela() -> bool:
-    hora = datetime.now().hour
-    if HORA_INICIO <= HORA_FIM:
-        return HORA_INICIO <= hora < HORA_FIM
-    # janela atravessa meia-noite (ex: 20-6)
-    return hora >= HORA_INICIO or hora < HORA_FIM
+def _aguardar_ate_proximo(horarios: list) -> datetime:
+    """Dorme até o próximo horário agendado, acordando em fatias de 10s para checar força."""
+    agora = datetime.now()
+    candidatos = []
+    for h in horarios:
+        prox = agora.replace(hour=h, minute=0, second=0, microsecond=0)
+        if prox <= agora:
+            prox += timedelta(days=1)
+        candidatos.append(prox)
+    proxima = min(candidatos)
+    salvar_estado("aguardando", proxima_rodada=proxima.isoformat())
+    logger.info(f"Próxima rodada: {proxima.strftime('%d/%m %H:%M')} — dormindo...")
+    while datetime.now() < proxima:
+        time.sleep(10)
+        if consumir_forca():
+            logger.info("Força rodada — acordando imediatamente.")
+            return datetime.now()
+        if esta_pausado():
+            time.sleep(50)  # pausa: checa a cada 60s
+    return proxima
 
 
 def executar_rodada():
@@ -177,37 +178,30 @@ def executar_rodada():
                 time.sleep(INTERVALO_ENTRE_POSTS)
 
     logger.info(f"=== Rodada concluída: {enviadas} enviadas ===")
-    proxima = (datetime.now() + timedelta(minutes=RODAR_A_CADA_MINUTOS)).isoformat()
-    salvar_estado("aguardando", proxima_rodada=proxima)
 
 
 def main():
     logger.info("Bot iniciado")
-    logger.info(f"Intervalo: {RODAR_A_CADA_MINUTOS} min | Desconto mínimo: {MIN_DESCONTO}% | Janela: {HORA_INICIO}h-{HORA_FIM}h")
+    logger.info(f"Horários: {HORARIOS_EXECUCAO}h | Desconto mínimo: {MIN_DESCONTO}%")
+
+    # Roda imediatamente na primeira vez se flag de força já estiver setada
+    if not consumir_forca():
+        _aguardar_ate_proximo(HORARIOS_EXECUCAO)
 
     while True:
         if esta_pausado():
+            salvar_estado("aguardando")
             logger.info("Bot pausado. Aguardando...")
             time.sleep(60)
             continue
 
-        if not dentro_da_janela() and not consumir_forca():
-            hora = datetime.now().hour
-            proxima = (datetime.now() + timedelta(minutes=RODAR_A_CADA_MINUTOS)).isoformat()
-            salvar_estado("fora_da_janela", proxima_rodada=proxima)
-            logger.info(f"Fora da janela ({hora}h). Aguardando...")
-            _aguardar_com_forca(RODAR_A_CADA_MINUTOS * 60)
-            continue
-
-        consumir_forca()  # limpa flag se estava forçado
         try:
             executar_rodada()
         except Exception as e:
             logger.error(f"Erro crítico na rodada: {e}")
             salvar_estado("erro")
 
-        logger.info(f"Próxima rodada em {RODAR_A_CADA_MINUTOS} minutos...")
-        _aguardar_com_forca(RODAR_A_CADA_MINUTOS * 60)
+        _aguardar_ate_proximo(HORARIOS_EXECUCAO)
 
 
 if __name__ == "__main__":

@@ -41,6 +41,7 @@
       <p><small>Próxima rodada: <span id="proxima-rodada">—</span></small></p>
       <button class="btn-green" id="btn-forcar" onclick="forcarRodada()">▶ Forçar rodada agora</button>
       <button class="btn-red" id="btn-pausar" onclick="togglePausar()">⏸ Pausar</button>
+      <p id="forca-msg" style="margin:.5rem 0 0;font-size:.9rem;min-height:1.2em;"></p>
     </div>
 
     <!-- Config -->
@@ -150,14 +151,30 @@
 
     async function forcarRodada() {
       const btn = document.getElementById('btn-forcar');
+      const msg = document.getElementById('forca-msg');
       btn.disabled = true;
-      btn.textContent = '⏳ Aguardando bot...';
-      await post('/api/forcar-rodada', {});
-      // Reabilita após 35s (bot acorda em até 30s)
+      btn.textContent = '⏳ Ativando...';
+      msg.style.color = '#856404';
+      msg.textContent = '';
+      try {
+        const r = await post('/api/forcar-rodada', {});
+        if (r.ok) {
+          btn.textContent = '✅ Ativado! Bot acorda em até 10s';
+          msg.style.color = '#155724';
+          msg.textContent = 'Rodada forçada com sucesso. Acompanhe o status acima.';
+        } else {
+          throw new Error('resposta não ok');
+        }
+      } catch(e) {
+        btn.textContent = '❌ Falha ao ativar';
+        msg.style.color = '#721c24';
+        msg.textContent = 'Erro ao comunicar com o servidor. Tente novamente.';
+      }
       setTimeout(() => {
         btn.disabled = false;
         btn.textContent = '▶ Forçar rodada agora';
-      }, 35000);
+        msg.textContent = '';
+      }, 15000);
     }
 
     carregarStatus(); carregarConfig(); carregarCategorias(); carregarOfertas();
