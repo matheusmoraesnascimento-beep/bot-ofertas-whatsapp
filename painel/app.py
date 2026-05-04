@@ -1,8 +1,10 @@
 import os
 import sys
+import threading
+import base64
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, Response
 from dotenv import load_dotenv
 
 load_dotenv("config.env")
@@ -114,6 +116,89 @@ def api_pausar():
 def api_forcar_rodada():
     forcar_rodada()
     return jsonify({"ok": True})
+
+
+# --- WhatsApp Auth ---
+_wa_state = {"status": "idle", "qr_png": None}  # idle | waiting_qr | qr_ready | logged_in | error
+
+
+def _run_wa_auth():
+    import time
+    SESSION_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".whatsapp_session")
+    try:
+        from playwright.sync_api import sync_playwright
+        _wa_state["status"] = "waiting_qr"
+        _wa_state["qr_png"] = None
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch_persistent_context(
+                user_data_dir=SESSION_DIR,
+                headless=True,
+                args=["--no-sandbox", "--disable-dev-shm-usage"],
+            )
+            page = browser.new_page()
+            page.goto("https://web.whatsapp.com", timeout=60000)
+
+            # Espera QR aparecer ou já estar logado
+            for _ in range(30):
+                if page.query_selector('canvas[aria-label="Scan me!"], canvas[aria-label*="QR"]'):
+                    break
+                if page.query_selector('div[aria-label="Lista de conversas"]'):
+                    _wa_state["status"] = "logged_in"
+                    browser.close()
+                    return
+                time.sleep(2)
+
+            # Tira screenshot só da área do QR
+            qr_el = page.query_selector('canvas[aria-label="Scan me!"], canvas[aria-label*="QR"]')
+            if qr_el:
+                png = qr_el.screenshot()
+            else:
+                png = page.screenshot()
+            _wa_state["qr_png"] = png
+            _wa_state["status"] = "qr_ready"
+
+            # Aguarda login (até 5 min)
+            try:
+                page.wait_for_selector('div[aria-label="Lista de conversas"]', timeout=300000)
+                _wa_state["status"] = "logged_in"
+            except Exception:
+                _wa_state["status"] = "error"
+            browser.close()
+    except Exception as e:
+        _wa_state["status"] = "error"
+        _wa_state["qr_png"] = None
+
+
+@app.route("/auth-whatsapp")
+@login_required
+def auth_whatsapp():
+    return render_template("auth_whatsapp.html")
+
+
+@app.route("/api/auth-whatsapp/start", methods=["POST"])
+@login_required
+def api_wa_start():
+    if _wa_state["status"] in ("waiting_qr", "qr_ready"):
+        return jsonify({"ok": True, "status": _wa_state["status"]})
+    _wa_state["status"] = "idle"
+    _wa_state["qr_png"] = None
+    t = threading.Thread(target=_run_wa_auth, daemon=True)
+    t.start()
+    return jsonify({"ok": True, "status": "waiting_qr"})
+
+
+@app.route("/api/auth-whatsapp/status")
+@login_required
+def api_wa_status():
+    return jsonify({"status": _wa_state["status"], "has_qr": _wa_state["qr_png"] is not None})
+
+
+@app.route("/api/auth-whatsapp/qr")
+@login_required
+def api_wa_qr():
+    if not _wa_state["qr_png"]:
+        return Response(status=204)
+    return Response(_wa_state["qr_png"], mimetype="image/png")
 
 
 if __name__ == "__main__":

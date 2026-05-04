@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Autenticar WhatsApp</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+    .card { background: white; border-radius: 12px; padding: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,.15); text-align: center; max-width: 420px; width: 100%; }
+    h2 { color: #128C7E; margin-top: 0; }
+    button { background: #25D366; color: white; border: none; border-radius: 6px; padding: .7rem 1.5rem; font-size: 1rem; cursor: pointer; margin-top: 1rem; }
+    button:disabled { background: #aaa; cursor: default; }
+    #qr-img { margin: 1rem auto; display: none; border: 4px solid #25D366; border-radius: 8px; }
+    #status-msg { margin-top: 1rem; font-size: .95rem; color: #555; }
+    .ok { color: #25D366; font-weight: bold; font-size: 1.1rem; }
+    .err { color: #e74c3c; }
+    a { display: block; margin-top: 1.5rem; color: #128C7E; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>📱 Autenticar WhatsApp</h2>
+    <p>Clique em iniciar, aguarde o QR aparecer e escaneie pelo celular.</p>
+    <button id="btn-start" onclick="iniciar()">Iniciar</button>
+    <br>
+    <img id="qr-img" width="300" height="300" alt="QR Code">
+    <div id="status-msg"></div>
+    <a href="/">← Voltar ao painel</a>
+  </div>
+
+  <script>
+    let poll;
+
+    async function iniciar() {
+      document.getElementById('btn-start').disabled = true;
+      document.getElementById('status-msg').textContent = 'Iniciando browser...';
+      await fetch('/api/auth-whatsapp/start', { method: 'POST' });
+      poll = setInterval(verificar, 3000);
+    }
+
+    async function verificar() {
+      const r = await fetch('/api/auth-whatsapp/status');
+      const d = await r.json();
+      const msg = document.getElementById('status-msg');
+
+      if (d.status === 'waiting_qr') {
+        msg.textContent = 'Aguardando QR code...';
+      } else if (d.status === 'qr_ready' && d.has_qr) {
+        msg.textContent = 'Escaneie o QR code pelo WhatsApp:';
+        const img = document.getElementById('qr-img');
+        img.src = '/api/auth-whatsapp/qr?' + Date.now();
+        img.style.display = 'block';
+      } else if (d.status === 'logged_in') {
+        clearInterval(poll);
+        document.getElementById('qr-img').style.display = 'none';
+        msg.innerHTML = '<span class="ok">✅ WhatsApp conectado! Sessão salva.</span>';
+      } else if (d.status === 'error') {
+        clearInterval(poll);
+        msg.innerHTML = '<span class="err">❌ Erro ao conectar. Tente novamente.</span>';
+        document.getElementById('btn-start').disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
