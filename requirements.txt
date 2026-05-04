@@ -1,4 +1,5 @@
-python-dotenv
+playwright
 requests
 beautifulsoup4
-playwright
+python-dotenv
+flask
