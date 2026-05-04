@@ -54,37 +54,43 @@ def api_ofertas():
     return jsonify(listar_ofertas(100))
 
 
+CAMPOS_PUBLICOS = ["MIN_DESCONTO", "MAX_OFERTAS_POR_RODADA",
+                   "INTERVALO_ENTRE_POSTS", "RODAR_A_CADA_MINUTOS",
+                   "HORA_INICIO", "HORA_FIM", "WHATSAPP_GROUP_NAME"]
+
+
 @app.route("/api/config", methods=["GET", "POST"])
 @login_required
 def api_config():
     config_file = "config.env"
     if request.method == "GET":
-        cfg = {}
-        with open(config_file) as f:
-            for linha in f:
-                linha = linha.strip()
-                if "=" in linha and not linha.startswith("#"):
-                    k, v = linha.split("=", 1)
-                    cfg[k.strip()] = v.strip()
-        campos_publicos = ["MIN_DESCONTO", "MAX_OFERTAS_POR_RODADA",
-                           "INTERVALO_ENTRE_POSTS", "RODAR_A_CADA_MINUTOS",
-                           "HORA_INICIO", "HORA_FIM", "WHATSAPP_GROUP_NAME"]
-        return jsonify({k: cfg.get(k, "") for k in campos_publicos})
+        cfg = {k: os.getenv(k, "") for k in CAMPOS_PUBLICOS}
+        if os.path.exists(config_file):
+            with open(config_file) as f:
+                for linha in f:
+                    linha = linha.strip()
+                    if "=" in linha and not linha.startswith("#"):
+                        k, v = linha.split("=", 1)
+                        if k.strip() in CAMPOS_PUBLICOS:
+                            cfg[k.strip()] = v.strip()
+        return jsonify(cfg)
     data = request.json or {}
-    linhas = []
-    with open(config_file) as f:
-        linhas = f.readlines()
     for k, v in data.items():
-        found = False
-        for i, linha in enumerate(linhas):
-            if linha.strip().startswith(k + "="):
-                linhas[i] = f"{k}={v}\n"
-                found = True
-                break
-        if not found:
-            linhas.append(f"{k}={v}\n")
-    with open(config_file, "w") as f:
-        f.writelines(linhas)
+        os.environ[k] = str(v)
+    if os.path.exists(config_file):
+        with open(config_file) as f:
+            linhas = f.readlines()
+        for k, v in data.items():
+            found = False
+            for i, linha in enumerate(linhas):
+                if linha.strip().startswith(k + "="):
+                    linhas[i] = f"{k}={v}\n"
+                    found = True
+                    break
+            if not found:
+                linhas.append(f"{k}={v}\n")
+        with open(config_file, "w") as f:
+            f.writelines(linhas)
     return jsonify({"ok": True})
 
 
@@ -119,7 +125,7 @@ def api_forcar_rodada():
 
 
 # --- WhatsApp Auth ---
-_wa_state = {"status": "idle", "qr_png": None}  # idle | waiting_qr | qr_ready | logged_in | error
+_wa_state = {"status": "idle", "qr_png": None, "page_ref": None}  # idle | waiting_qr | qr_ready | logged_in | error
 
 
 def _run_wa_auth():

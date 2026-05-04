@@ -99,6 +99,18 @@ def montar_mensagem(oferta: dict) -> str:
     return "\n".join(linhas)
 
 
+def _aguardar_com_forca(segundos: int):
+    """Dorme em fatias de 30s, acorda cedo se forçar rodada."""
+    from painel.state import consumir_forca as _forca
+    elapsed = 0
+    while elapsed < segundos:
+        time.sleep(30)
+        elapsed += 30
+        if _forca():
+            logger.info("Força rodada detectada — acordando cedo.")
+            return
+
+
 def dentro_da_janela() -> bool:
     hora = datetime.now().hour
     if HORA_INICIO <= HORA_FIM:
@@ -181,8 +193,8 @@ def main():
 
         if not dentro_da_janela() and not consumir_forca():
             hora = datetime.now().hour
-            logger.info(f"Fora da janela ({hora}h). Aguardando {RODAR_A_CADA_MINUTOS} min...")
-            time.sleep(RODAR_A_CADA_MINUTOS * 60)
+            logger.info(f"Fora da janela ({hora}h). Aguardando...")
+            _aguardar_com_forca(RODAR_A_CADA_MINUTOS * 60)
             continue
 
         consumir_forca()  # limpa flag se estava forçado
@@ -193,7 +205,7 @@ def main():
             salvar_estado("erro")
 
         logger.info(f"Próxima rodada em {RODAR_A_CADA_MINUTOS} minutos...")
-        time.sleep(RODAR_A_CADA_MINUTOS * 60)
+        _aguardar_com_forca(RODAR_A_CADA_MINUTOS * 60)
 
 
 if __name__ == "__main__":
