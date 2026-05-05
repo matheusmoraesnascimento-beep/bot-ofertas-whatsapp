@@ -1,5 +1,6 @@
 playwright
 requests
+curl_cffi
 beautifulsoup4
 python-dotenv
 flask

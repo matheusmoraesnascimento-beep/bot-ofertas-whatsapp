@@ -1,13 +1,21 @@
 import os
 import re
 import logging
-import requests
+from curl_cffi import requests
 from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
 
 ASSOCIATE_TAG = os.getenv("AMAZON_ASSOCIATE_TAG", "")
-SCRAPERAPI_KEY = os.getenv("SCRAPERAPI_KEY", "")
+
+_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Accept-Language": "pt-BR,pt;q=0.9",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
+}
 
 
 def _montar_link(asin: str) -> str:
@@ -84,21 +92,21 @@ def _extrair_preco(texto: str):
 
 
 def buscar_ofertas_amazon(categoria: str) -> list:
-    if not SCRAPERAPI_KEY:
-        logger.error("Amazon: SCRAPERAPI_KEY não configurado")
-        return []
     if not ASSOCIATE_TAG:
         logger.warning("Amazon: AMAZON_ASSOCIATE_TAG não configurado")
 
     target = f"https://www.amazon.com.br/s?k={categoria.replace(' ', '+')}&sort=review-rank"
-    proxy_url = f"http://api.scraperapi.com?api_key={SCRAPERAPI_KEY}&url={target}&country_code=br"
 
     try:
-        resp = requests.get(proxy_url, timeout=60)
+        resp = requests.get(target, headers=_HEADERS, timeout=20, impersonate="chrome124")
         resp.raise_for_status()
         html = resp.text
     except Exception as e:
-        logger.error(f"Amazon ScraperAPI erro [{categoria}]: {e}")
+        logger.error(f"Amazon request erro [{categoria}]: {e}")
+        return []
+
+    if "captcha" in html.lower() or "Digite os caracteres" in html:
+        logger.warning(f"Amazon [{categoria}]: bloqueado por CAPTCHA")
         return []
 
     soup = BeautifulSoup(html, "html.parser")
