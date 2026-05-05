@@ -18,11 +18,10 @@ _HEADERS = {
 
 
 def _link_afiliado(permalink: str) -> str:
-    encoded = quote(permalink, safe="")
+    sep = "&" if "?" in permalink else "?"
     return (
-        f"https://www.mercadolivre.com.br/social/{ML_AFFILIATE_ID}"
-        f"?matt_word={ML_AFFILIATE_ID}&matt_tool={ML_TOOL_ID}"
-        f"&forceInApp=true&productURL={encoded}"
+        f"{permalink}{sep}matt_word={ML_AFFILIATE_ID}"
+        f"&matt_tool={ML_TOOL_ID}"
     )
 
 
