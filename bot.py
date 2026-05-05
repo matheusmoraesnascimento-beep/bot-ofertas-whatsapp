@@ -1,7 +1,9 @@
 import os
 import sys
+import re
 import time
 import logging
+import unicodedata
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
@@ -19,6 +21,8 @@ INTERVALO_ENTRE_POSTS = int(os.getenv("INTERVALO_ENTRE_POSTS", "60"))
 # Horários fixos de execução (Brasília) — ex: "8,18"
 HORARIOS_EXECUCAO = [int(h) for h in os.getenv("HORARIOS_EXECUCAO", "8,18").split(",") if h.strip()]
 
+BASE_URL = os.getenv("BASE_URL", "http://localhost:5000").rstrip("/")
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -33,6 +37,7 @@ from kabum import buscar_ofertas_kabum
 from filtros import filtrar_melhores_ofertas, remover_repetidas, salvar_em_historico
 from painel.state import salvar_estado, esta_pausado, consumir_forca
 from inteligencia import calcular_score, categoria_ativa, registrar_precos
+from db import criar_ou_buscar_link
 
 DRY_RUN = os.getenv("DRY_RUN", "true").lower() == "true"
 
@@ -57,12 +62,22 @@ def ler_categorias(arquivo="categorias.txt"):
         return []
 
 
+def gerar_slug(produto: str, loja: str) -> str:
+    texto = f"{produto}-{loja}".lower()
+    texto = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode()
+    texto = re.sub(r"[^a-z0-9]+", "-", texto).strip("-")
+    return texto[:60]
+
+
 def montar_mensagem(oferta: dict) -> str:
     preco_atual = oferta["preco_atual"]
     preco_antigo = oferta.get("preco_antigo")
     desconto = oferta.get("desconto_percentual", 0)
 
-    # Headline com economia em R$
+    slug = gerar_slug(oferta["produto"], oferta.get("loja", ""))
+    criar_ou_buscar_link(slug, oferta["link_afiliado"], oferta["produto"])
+    link_rastreado = f"{BASE_URL}/r/{slug}"
+
     if preco_antigo:
         economia = preco_antigo - preco_atual
         headline = f"🔥 BAIXOU R$ {economia:.2f} (-{desconto:.0f}%)"
@@ -71,7 +86,6 @@ def montar_mensagem(oferta: dict) -> str:
 
     linhas = [headline, "", f"🛍️ {oferta['produto']}"]
 
-    # Prova social: rating + reviews
     rating = oferta.get("rating")
     num_reviews = oferta.get("num_reviews")
     if rating and num_reviews:
@@ -90,7 +104,7 @@ def montar_mensagem(oferta: dict) -> str:
 
     linhas.extend([
         "",
-        f"👉 {oferta['link_afiliado']}",
+        f"👉 {link_rastreado}",
         "",
         "⏰ Estoque limitado — preço pode mudar.",
     ])
