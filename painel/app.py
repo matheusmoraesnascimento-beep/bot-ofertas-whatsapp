@@ -288,6 +288,71 @@ def instagram_post_imagem(data, filename):
     return send_from_directory(pasta, filename)
 
 
+@app.route("/api/instagram-posts/gerar", methods=["POST"])
+@login_required
+def api_gerar_posts_instagram():
+    try:
+        import sys
+        sys.path.insert(0, _ROOT)
+        from amazon import buscar_ofertas_amazon
+        from mercadolivre import buscar_ofertas_mercadolivre
+        from filtros import filtrar_melhores_ofertas
+        from instagram_posts import _gerar_imagem, _gerar_caption, POSTS_DIR
+
+        categorias = ["air fryer", "fone bluetooth", "smartwatch", "secador de cabelo", "robo aspirador"]
+        ofertas = []
+        for cat in categorias:
+            try:
+                ofertas += buscar_ofertas_amazon(cat)
+            except Exception:
+                pass
+            try:
+                ofertas += buscar_ofertas_mercadolivre(cat)
+            except Exception:
+                pass
+
+        filtradas = filtrar_melhores_ofertas(ofertas, 15)
+        filtradas.sort(key=lambda o: o.get("desconto_percentual", 0), reverse=True)
+
+        selecionadas = []
+        vistos = set()
+        for o in filtradas:
+            chave = o["produto"][:40]
+            if chave not in vistos:
+                selecionadas.append(o)
+                vistos.add(chave)
+            if len(selecionadas) >= 3:
+                break
+
+        if not selecionadas:
+            return jsonify({"ok": False, "erro": "Nenhuma oferta encontrada"}), 200
+
+        hoje = datetime.now().strftime("%Y-%m-%d")
+        pasta = os.path.join(_ROOT, "posts", hoje)
+        os.makedirs(pasta, exist_ok=True)
+
+        gerados = []
+        for i, o in enumerate(selecionadas, start=1):
+            oferta_fmt = {
+                "produto": o["produto"],
+                "loja": o["loja"],
+                "preco": o["preco_atual"],
+                "desconto": o.get("desconto_percentual", 0),
+                "imagem": o.get("imagem", ""),
+                "link": o.get("link_afiliado", ""),
+            }
+            img = _gerar_imagem(oferta_fmt, i - 1)
+            img.save(os.path.join(pasta, f"post_{i}.jpg"), "JPEG", quality=92)
+            caption = _gerar_caption(oferta_fmt)
+            with open(os.path.join(pasta, f"post_{i}.txt"), "w", encoding="utf-8") as f:
+                f.write(caption)
+            gerados.append(o["produto"][:50])
+
+        return jsonify({"ok": True, "gerados": len(gerados), "produtos": gerados})
+    except Exception as e:
+        return jsonify({"ok": False, "erro": str(e)}), 500
+
+
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port)

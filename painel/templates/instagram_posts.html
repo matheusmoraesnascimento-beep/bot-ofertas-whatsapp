@@ -21,8 +21,14 @@
   </style>
 </head>
 <body>
-  <a class="back" href="/">&#8592; Voltar ao painel</a>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+    <a class="back" style="margin-bottom:0" href="/">&#8592; Voltar ao painel</a>
+    <button class="btn" style="background:#e1306c;color:white;font-size:15px" onclick="gerarPosts()" id="btn-gerar">
+      📸 Gerar posts agora
+    </button>
+  </div>
   <h1>Posts Instagram &mdash; {{ hoje }}</h1>
+  <p id="gerar-msg" style="min-height:1.4em;margin-bottom:16px;font-size:14px"></p>
 
   {% if posts %}
   <div class="grid">
@@ -52,6 +58,34 @@
       const ta = document.getElementById('caption-' + i);
       ta.select();
       navigator.clipboard.writeText(ta.value).then(() => alert('Caption copiado!'));
+    }
+
+    async function gerarPosts() {
+      const btn = document.getElementById('btn-gerar');
+      const msg = document.getElementById('gerar-msg');
+      btn.disabled = true;
+      btn.textContent = '⏳ Gerando... (pode levar 30s)';
+      msg.style.color = '#856404';
+      msg.textContent = 'Buscando ofertas e gerando imagens...';
+      try {
+        const r = await fetch('/api/instagram-posts/gerar', {method:'POST'});
+        const data = await r.json();
+        if (data.ok) {
+          msg.style.color = '#155724';
+          msg.textContent = `✅ ${data.gerados} posts gerados! Recarregando...`;
+          setTimeout(() => location.reload(), 1500);
+        } else {
+          msg.style.color = '#721c24';
+          msg.textContent = '❌ Erro: ' + data.erro;
+          btn.disabled = false;
+          btn.textContent = '📸 Gerar posts agora';
+        }
+      } catch(e) {
+        msg.style.color = '#721c24';
+        msg.textContent = '❌ Falha na requisição';
+        btn.disabled = false;
+        btn.textContent = '📸 Gerar posts agora';
+      }
     }
   </script>
 </body>
