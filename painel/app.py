@@ -77,20 +77,21 @@ def api_config():
     data = request.json or {}
     for k, v in data.items():
         os.environ[k] = str(v)
+    linhas = []
     if os.path.exists(config_file):
         with open(config_file) as f:
             linhas = f.readlines()
-        for k, v in data.items():
-            found = False
-            for i, linha in enumerate(linhas):
-                if linha.strip().startswith(k + "="):
-                    linhas[i] = f"{k}={v}\n"
-                    found = True
-                    break
-            if not found:
-                linhas.append(f"{k}={v}\n")
-        with open(config_file, "w") as f:
-            f.writelines(linhas)
+    for k, v in data.items():
+        found = False
+        for i, linha in enumerate(linhas):
+            if linha.strip().startswith(k + "="):
+                linhas[i] = f"{k}={v}\n"
+                found = True
+                break
+        if not found:
+            linhas.append(f"{k}={v}\n")
+    with open(config_file, "w") as f:
+        f.writelines(linhas)
     return jsonify({"ok": True})
 
 
@@ -131,19 +132,20 @@ def api_fontes():
     fontes = data.get("fontes", "amazon,ml")
     os.environ["FONTES_ATIVAS"] = fontes
     config_file = "config.env"
+    linhas = []
     if os.path.exists(config_file):
         with open(config_file) as f:
             linhas = f.readlines()
-        found = False
-        for i, linha in enumerate(linhas):
-            if linha.strip().startswith("FONTES_ATIVAS="):
-                linhas[i] = f"FONTES_ATIVAS={fontes}\n"
-                found = True
-                break
-        if not found:
-            linhas.append(f"FONTES_ATIVAS={fontes}\n")
-        with open(config_file, "w") as f:
-            f.writelines(linhas)
+    found = False
+    for i, linha in enumerate(linhas):
+        if linha.strip().startswith("FONTES_ATIVAS="):
+            linhas[i] = f"FONTES_ATIVAS={fontes}\n"
+            found = True
+            break
+    if not found:
+        linhas.append(f"FONTES_ATIVAS={fontes}\n")
+    with open(config_file, "w") as f:
+        f.writelines(linhas)
     return jsonify({"ok": True, "fontes": fontes})
 
 
