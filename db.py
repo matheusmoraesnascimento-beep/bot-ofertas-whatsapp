@@ -36,6 +36,25 @@ def init_db():
             )
         """)
         con.execute("CREATE INDEX IF NOT EXISTS idx_hp_link ON historico_precos(link)")
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS links (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                slug TEXT UNIQUE NOT NULL,
+                url_destino TEXT NOT NULL,
+                produto TEXT,
+                criado_em TEXT NOT NULL
+            )
+        """)
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS link_cliques (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                slug TEXT NOT NULL,
+                clicado_em TEXT NOT NULL
+            )
+        """)
+        con.execute("CREATE INDEX IF NOT EXISTS idx_slug ON links(slug)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_cliques_slug ON link_cliques(slug)")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_cliques_data ON link_cliques(clicado_em)")
 
 
 def ja_enviado(link: str, horas: int = 24) -> bool:
@@ -115,3 +134,60 @@ def preco_minimo_historico(link: str, dias: int = 30) -> float | None:
             (link, limite),
         ).fetchone()
     return row[0] if row and row[0] is not None else None
+
+
+def criar_ou_buscar_link(slug: str, url_destino: str, produto: str) -> str:
+    with _conn() as con:
+        con.execute(
+            "INSERT OR IGNORE INTO links (slug, url_destino, produto, criado_em) VALUES (?,?,?,?)",
+            (slug, url_destino, produto, datetime.now().isoformat()),
+        )
+        con.commit()
+    return slug
+
+
+def registrar_clique(slug: str):
+    with _conn() as con:
+        con.execute(
+            "INSERT INTO link_cliques (slug, clicado_em) VALUES (?,?)",
+            (slug, datetime.now().isoformat()),
+        )
+        con.commit()
+
+
+def buscar_url_destino(slug: str) -> str | None:
+    with _conn() as con:
+        row = con.execute(
+            "SELECT url_destino FROM links WHERE slug = ?", (slug,)
+        ).fetchone()
+    return row[0] if row else None
+
+
+def listar_links_com_stats() -> list[dict]:
+    limite_24h = (datetime.now() - timedelta(hours=24)).isoformat()
+    with _conn() as con:
+        links = con.execute(
+            "SELECT slug, url_destino, produto, criado_em FROM links ORDER BY criado_em DESC"
+        ).fetchall()
+        result = []
+        for slug, url_destino, produto, criado_em in links:
+            total = con.execute(
+                "SELECT COUNT(*) FROM link_cliques WHERE slug = ?", (slug,)
+            ).fetchone()[0]
+            hora_row = con.execute(
+                """SELECT strftime('%H', clicado_em) as hora, COUNT(*) as cnt
+                   FROM link_cliques
+                   WHERE slug = ? AND clicado_em > ?
+                   GROUP BY hora ORDER BY cnt DESC LIMIT 1""",
+                (slug, limite_24h),
+            ).fetchone()
+            hora_pico = f"{int(hora_row[0])}h-{int(hora_row[0])+1}h" if hora_row else None
+            result.append({
+                "slug": slug,
+                "url_destino": url_destino,
+                "produto": produto or "",
+                "criado_em": criado_em,
+                "total_cliques": total,
+                "hora_pico": hora_pico,
+            })
+    return result
