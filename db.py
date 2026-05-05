@@ -197,3 +197,21 @@ def listar_links_com_stats() -> list[dict]:
         }
         for row in rows
     ]
+
+
+def top_ofertas_para_post(n: int = 3) -> list[dict]:
+    limite = (datetime.now() - timedelta(hours=24)).isoformat()
+    with _conn() as con:
+        rows = con.execute(
+            """
+            SELECT produto, loja, preco, link, desconto, imagem, data_envio
+            FROM ofertas_enviadas
+            WHERE data_envio > ?
+            GROUP BY produto
+            ORDER BY desconto DESC
+            LIMIT ?
+            """,
+            (limite, n),
+        ).fetchall()
+    cols = ["produto", "loja", "preco", "link", "desconto", "imagem", "data_envio"]
+    return [dict(zip(cols, r)) for r in rows]
