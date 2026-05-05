@@ -37,7 +37,7 @@ from kabum import buscar_ofertas_kabum
 from filtros import filtrar_melhores_ofertas, remover_repetidas, salvar_em_historico
 from painel.state import salvar_estado, esta_pausado, consumir_forca
 from inteligencia import calcular_score, categoria_ativa, registrar_precos
-from db import criar_ou_buscar_link
+from db import init_db, criar_ou_buscar_link
 
 DRY_RUN = os.getenv("DRY_RUN", "true").lower() == "true"
 
@@ -213,6 +213,7 @@ def executar_rodada():
 
 
 def main():
+    init_db()
     logger.info("Bot iniciado")
     logger.info(f"Horários: {HORARIOS_EXECUCAO}h | Desconto mínimo: {MIN_DESCONTO}%")
 
