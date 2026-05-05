@@ -2,6 +2,7 @@ import os
 import sys
 import re
 import time
+import random
 import logging
 import unicodedata
 from datetime import datetime, timedelta
@@ -183,7 +184,12 @@ def executar_rodada():
     filtradas.sort(key=lambda o: o["_score"], reverse=True)
 
     novas = remover_repetidas(filtradas)
-    logger.info(f"Após dedup 24h: {len(novas)} — enviando até {max_ofertas}")
+    logger.info(f"Após dedup 48h: {len(novas)} — enviando até {max_ofertas}")
+
+    # Pega os top 3x e embaralha para variar sem perder qualidade
+    pool = novas[:max_ofertas * 3]
+    random.shuffle(pool)
+    novas = pool
 
     # Garante 1 produto por categoria (rotatividade)
     selecionadas = []

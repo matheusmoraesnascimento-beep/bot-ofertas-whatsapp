@@ -58,7 +58,7 @@ def filtrar_melhores_ofertas(ofertas, min_desconto=None):
 
 
 def remover_repetidas(ofertas):
-    return [o for o in ofertas if not _ja_enviado_db(o["link_afiliado"])]
+    return [o for o in ofertas if not _ja_enviado_db(o["link_afiliado"], horas=48)]
 
 
 def salvar_em_historico(oferta):
