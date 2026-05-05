@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 load_dotenv("config.env")
 
-from db import init_db, listar_ofertas
+from db import init_db, listar_ofertas, buscar_url_destino, registrar_clique, listar_links_com_stats
 from painel.auth import login_required, verificar_senha
 from painel.state import ler_estado, pausar, forcar_rodada
 
@@ -213,6 +213,21 @@ def api_wa_qr():
     if not _wa_state["qr_png"]:
         return Response(status=204)
     return Response(_wa_state["qr_png"], mimetype="image/png")
+
+
+@app.route("/r/<slug>")
+def redirect_link(slug):
+    url = buscar_url_destino(slug)
+    if not url:
+        return "Link não encontrado", 404
+    registrar_clique(slug)
+    return redirect(url, code=302)
+
+
+@app.route("/api/links")
+@login_required
+def api_links():
+    return jsonify(listar_links_com_stats())
 
 
 if __name__ == "__main__":
