@@ -241,9 +241,7 @@
     }
 
     carregarStatus(); carregarConfig(); carregarCategorias(); carregarOfertas(); carregarLinks(); carregarFontes();
-    setInterval(carregarStatus, 15000);
-    setInterval(carregarOfertas, 60000);
-    setInterval(carregarLinks, 30000);
+    setInterval(() => { carregarStatus(); carregarOfertas(); carregarLinks(); }, 15000);
   </script>
 </body>
 </html>
