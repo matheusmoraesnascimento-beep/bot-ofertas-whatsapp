@@ -62,6 +62,8 @@ def buscar_ofertas_mercadolivre(categoria: str) -> list:
     ofertas = []
     for item in items:
         try:
+            if item.get("type") == "MCLIC":
+                continue
             card = item.get("card", {})
             meta = card.get("metadata", {})
             components = {c["type"]: c for c in card.get("components", [])}
