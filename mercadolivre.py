@@ -1,5 +1,6 @@
 import os
-import time
+import re
+import json
 import logging
 import requests
 from urllib.parse import quote
@@ -8,55 +9,12 @@ logger = logging.getLogger(__name__)
 
 ML_AFFILIATE_ID = os.getenv("ML_AFFILIATE_ID", "moma2385656")
 ML_TOOL_ID = os.getenv("ML_TOOL_ID", "30629786")
-ML_CLIENT_ID = os.getenv("ML_CLIENT_ID", "")
-ML_CLIENT_SECRET = os.getenv("ML_CLIENT_SECRET", "")
-ML_ACCESS_TOKEN = os.getenv("ML_ACCESS_TOKEN", "")
-ML_REFRESH_TOKEN = os.getenv("ML_REFRESH_TOKEN", "")
 
-_token_cache = {"token": None, "expires_at": 0}
-
-
-def _refresh_token() -> str | None:
-    refresh = os.getenv("ML_REFRESH_TOKEN", ML_REFRESH_TOKEN)
-    if not refresh or not ML_CLIENT_ID or not ML_CLIENT_SECRET:
-        return None
-    try:
-        r = requests.post(
-            "https://api.mercadolibre.com/oauth/token",
-            data={
-                "grant_type": "refresh_token",
-                "client_id": ML_CLIENT_ID,
-                "client_secret": ML_CLIENT_SECRET,
-                "refresh_token": refresh,
-            },
-            timeout=10,
-        )
-        r.raise_for_status()
-        data = r.json()
-        from dotenv import set_key
-        set_key("config.env", "ML_ACCESS_TOKEN", data["access_token"])
-        set_key("config.env", "ML_REFRESH_TOKEN", data["refresh_token"])
-        os.environ["ML_REFRESH_TOKEN"] = data["refresh_token"]
-        os.environ["ML_ACCESS_TOKEN"] = data["access_token"]
-        _token_cache["token"] = data["access_token"]
-        _token_cache["expires_at"] = time.time() + data.get("expires_in", 21600) - 60
-        return data["access_token"]
-    except Exception as e:
-        logger.error(f"ML refresh erro: {e}")
-        return None
-
-
-def _get_token() -> str | None:
-    if _token_cache["token"] and time.time() < _token_cache["expires_at"]:
-        return _token_cache["token"]
-
-    static = os.getenv("ML_ACCESS_TOKEN", ML_ACCESS_TOKEN)
-    if static:
-        _token_cache["token"] = static
-        _token_cache["expires_at"] = time.time() + 3600
-        return static
-
-    return _refresh_token()
+_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Accept-Language": "pt-BR,pt;q=0.9",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+}
 
 
 def _link_afiliado(permalink: str) -> str:
@@ -68,62 +26,94 @@ def _link_afiliado(permalink: str) -> str:
     )
 
 
-def buscar_ofertas_mercadolivre(categoria: str) -> list:
-    token = _get_token()
-    if not token:
-        logger.warning("ML: sem token, pulando")
+def _imagem_url(picture_id: str) -> str | None:
+    if not picture_id:
+        return None
+    return f"https://http2.mlstatic.com/D_NQ_NP_{picture_id}-O.webp"
+
+
+def _extrair_items(html: str) -> list:
+    idx = html.find('"items":')
+    if idx < 0:
+        return []
+    try:
+        items, _ = json.JSONDecoder().raw_decode(html[idx + len('"items":'):])
+        return items if isinstance(items, list) else []
+    except (json.JSONDecodeError, ValueError):
         return []
 
-    def _fazer_busca(tok):
-        return requests.get(
-            "https://api.mercadolibre.com/sites/MLB/search",
-            params={"q": categoria, "sort": "relevance", "limit": 20, "condition": "new"},
-            headers={"Authorization": f"Bearer {tok}"},
+
+def buscar_ofertas_mercadolivre(categoria: str) -> list:
+    try:
+        resp = requests.get(
+            "https://www.mercadolivre.com.br/ofertas",
+            headers=_HEADERS,
             timeout=15,
         )
-
-    try:
-        r = _fazer_busca(token)
-        if r.status_code == 401:
-            logger.info("ML: token expirado, renovando...")
-            _token_cache["expires_at"] = 0
-            novo = _refresh_token()
-            if novo:
-                r = _fazer_busca(novo)
-        r.raise_for_status()
-        resultados = r.json().get("results", [])
+        resp.raise_for_status()
     except Exception as e:
-        logger.error(f"ML request erro [{categoria}]: {e}")
+        logger.error(f"ML request erro: {e}")
+        return []
+
+    items = _extrair_items(resp.text)
+    if not items:
+        logger.warning("ML: nenhum item extraído do JSON da página de ofertas")
         return []
 
     ofertas = []
-    for item in resultados:
+    for item in items:
         try:
-            preco_atual = float(item.get("price", 0))
-            permalink = item.get("permalink", "")
-            if not preco_atual or not permalink:
+            card = item.get("card", {})
+            meta = card.get("metadata", {})
+            components = {c["type"]: c for c in card.get("components", [])}
+
+            title_data = components.get("title", {}).get("title", {})
+            nome = title_data.get("text", "")
+            if not nome:
                 continue
 
-            preco_antigo = None
-            desconto = 0.0
-            original = item.get("original_price")
-            if original and float(original) > preco_atual:
-                preco_antigo = float(original)
+            url = meta.get("url", "")
+            if not url:
+                continue
+            if not url.startswith("http"):
+                url = "https://" + url
+
+            price_data = components.get("price", {}).get("price", {})
+            preco_atual = price_data.get("current_price", {}).get("value")
+            if not preco_atual:
+                continue
+
+            preco_anterior = price_data.get("previous_price", {}).get("value")
+            preco_antigo = preco_anterior if preco_anterior and preco_anterior > preco_atual else None
+
+            desconto = float(price_data.get("discount", {}).get("value", 0) or 0)
+            if not desconto and preco_antigo:
                 desconto = round((1 - preco_atual / preco_antigo) * 100, 1)
 
-            imagem = item.get("thumbnail", "").replace("-I.jpg", "-O.jpg") or None
+            reviews_data = components.get("reviews", {}).get("reviews", {})
+            rating = reviews_data.get("rating_average")
+            num_reviews = reviews_data.get("total")
+
+            pictures = card.get("pictures", {}).get("pictures", [])
+            pic_id = pictures[0].get("id") if pictures else None
+            imagem = _imagem_url(pic_id)
+
+            # filtra por categoria: verifica se nome contém palavra da categoria
+            palavras = [p.lower() for p in categoria.split() if len(p) > 3]
+            if palavras and not any(p in nome.lower() for p in palavras):
+                continue
 
             ofertas.append({
-                "produto": item.get("title", ""),
+                "produto": nome,
                 "loja": "Mercado Livre",
-                "preco_atual": preco_atual,
-                "preco_antigo": preco_antigo,
+                "preco_atual": float(preco_atual),
+                "preco_antigo": float(preco_antigo) if preco_antigo else None,
                 "desconto_percentual": desconto,
-                "link_afiliado": _link_afiliado(permalink),
+                "link_afiliado": _link_afiliado(url),
                 "imagem": imagem,
                 "categoria": categoria,
-                "rating": None,
-                "num_reviews": item.get("sold_quantity"),
+                "rating": rating,
+                "num_reviews": num_reviews,
             })
         except Exception as e:
             logger.debug(f"ML: erro item — {e}")
