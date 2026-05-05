@@ -161,17 +161,9 @@ def executar_rodada():
         except Exception as e:
             logger.error(f"Amazon falhou [{categoria}]: {e}")
         try:
-            ofertas.extend(buscar_ofertas_shopee(categoria))
-        except Exception as e:
-            logger.error(f"Shopee falhou [{categoria}]: {e}")
-        try:
             ofertas.extend(buscar_ofertas_mercadolivre(categoria))
         except Exception as e:
             logger.error(f"ML falhou [{categoria}]: {e}")
-        try:
-            ofertas.extend(buscar_ofertas_kabum(categoria))
-        except Exception as e:
-            logger.error(f"Kabum falhou [{categoria}]: {e}")
 
     logger.info(f"Total bruto: {len(ofertas)} ofertas")
 
