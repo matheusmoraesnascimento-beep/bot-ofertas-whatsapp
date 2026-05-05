@@ -85,6 +85,9 @@
   <script>
     async function get(url) { const r = await fetch(url); return r.json(); }
     async function post(url, data) { const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data)}); return r.json(); }
+    function esc(s) {
+      return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
 
     const STATUS_LABELS = {
       'rodando':        ['badge-ok',   '⚙️ Executando rodada...'],
@@ -122,29 +125,33 @@
       const tbody = document.getElementById('tabela-ofertas');
       tbody.innerHTML = ofertas.map(o => `
         <tr>
-          <td>${o.produto.substring(0,50)}</td>
-          <td>${o.loja}</td>
+          <td>${esc(o.produto).substring(0,50)}</td>
+          <td>${esc(o.loja)}</td>
           <td>R$ ${Number(o.preco).toFixed(2)}</td>
-          <td>${o.desconto || 0}%</td>
+          <td>${esc(o.desconto) || 0}%</td>
           <td>${new Date(o.data_envio).toLocaleString('pt-BR')}</td>
         </tr>`).join('');
     }
 
     async function carregarLinks() {
-      const links = await get('/api/links');
       const tbody = document.getElementById('tabela-links');
-      if (!links.length) {
-        tbody.innerHTML = '<tr><td colspan="5" style="color:#999">Nenhum link registrado ainda.</td></tr>';
-        return;
+      try {
+        const links = await get('/api/links');
+        if (!Array.isArray(links) || !links.length) {
+          tbody.innerHTML = '<tr><td colspan="5" style="color:#999">Nenhum link registrado ainda.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = links.map(l => `
+          <tr>
+            <td>${esc(l.produto).substring(0, 45)}</td>
+            <td><code>${esc(l.slug)}</code></td>
+            <td>${esc(l.total_cliques)}</td>
+            <td>${esc(l.hora_pico) || '—'}</td>
+            <td>${new Date(l.criado_em).toLocaleString('pt-BR')}</td>
+          </tr>`).join('');
+      } catch(e) {
+        tbody.innerHTML = '<tr><td colspan="5" style="color:#c00">Erro ao carregar links.</td></tr>';
       }
-      tbody.innerHTML = links.map(l => `
-        <tr>
-          <td>${(l.produto || '').substring(0, 45)}</td>
-          <td><code>${l.slug}</code></td>
-          <td>${l.total_cliques}</td>
-          <td>${l.hora_pico || '—'}</td>
-          <td>${new Date(l.criado_em).toLocaleString('pt-BR')}</td>
-        </tr>`).join('');
     }
 
     async function salvarConfig() {
