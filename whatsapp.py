@@ -10,6 +10,7 @@ from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeo
 logger = logging.getLogger(__name__)
 
 GROUP_NAME = os.getenv("WHATSAPP_GROUP_NAME", "")
+CHANNEL_NAME = os.getenv("WHATSAPP_CHANNEL_NAME", "")
 SESSION_DIR = os.path.join(os.path.dirname(__file__), ".whatsapp_session")
 
 
@@ -85,6 +86,19 @@ def enviar_para_grupo_whatsapp(mensagem: str, imagem_url: str = None):
 
             logger.info(f"Mensagem enviada para grupo '{GROUP_NAME}'")
             _delay()
+
+            if CHANNEL_NAME:
+                try:
+                    _abrir_canal(page, CHANNEL_NAME)
+                    if imagem_path and Path(imagem_path).exists():
+                        _enviar_imagem_com_legenda(page, imagem_path, mensagem)
+                    else:
+                        _enviar_mensagem(page, mensagem)
+                    logger.info(f"Mensagem enviada para canal '{CHANNEL_NAME}'")
+                    _delay()
+                except Exception as e:
+                    logger.warning(f"Canal falhou (grupo ok): {e}")
+
             return True
 
         except PlaywrightTimeout as e:
@@ -125,6 +139,30 @@ def _abrir_grupo(page, nome_grupo: str):
 
     except Exception as e:
         raise RuntimeError(f"Não foi possível abrir grupo '{nome_grupo}': {e}")
+
+
+def _abrir_canal(page, nome_canal: str):
+    try:
+        tab = page.locator('[data-tab="5"], [aria-label*="tualiza"], [aria-label*="hannel"]').first
+        tab.wait_for(state="visible", timeout=10000)
+        tab.click()
+        _delay()
+
+        resultado = page.locator(f'span[title="{nome_canal}"]').first
+        if resultado.count() == 0:
+            caixa = page.locator('[data-tab="6"][contenteditable="true"], [data-testid="chat-list-search"]').first
+            caixa.click()
+            _delay()
+            caixa.fill(nome_canal)
+            _delay()
+            resultado = page.locator(f'span[title="{nome_canal}"]').first
+            resultado.wait_for(timeout=15000)
+
+        resultado.click()
+        _delay()
+        logger.info(f"Canal '{nome_canal}' aberto")
+    except Exception as e:
+        raise RuntimeError(f"Não foi possível abrir canal '{nome_canal}': {e}")
 
 
 def _enviar_imagem_com_legenda(page, imagem_path: str, legenda: str) -> None:
