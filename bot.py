@@ -151,19 +151,24 @@ def executar_rodada():
         return
 
     ofertas = []
+    fontes = [f.strip() for f in os.getenv("FONTES_ATIVAS", "amazon,ml").split(",") if f.strip()]
+    logger.info(f"Fontes ativas: {fontes}")
+
     for categoria in categorias:
         if not categoria_ativa(categoria):
             logger.info(f"Pulando {categoria} (fora da janela da categoria)")
             continue
         logger.info(f"Buscando: {categoria}")
-        try:
-            ofertas.extend(buscar_ofertas_amazon(categoria))
-        except Exception as e:
-            logger.error(f"Amazon falhou [{categoria}]: {e}")
-        try:
-            ofertas.extend(buscar_ofertas_mercadolivre(categoria))
-        except Exception as e:
-            logger.error(f"ML falhou [{categoria}]: {e}")
+        if "amazon" in fontes:
+            try:
+                ofertas.extend(buscar_ofertas_amazon(categoria))
+            except Exception as e:
+                logger.error(f"Amazon falhou [{categoria}]: {e}")
+        if "ml" in fontes:
+            try:
+                ofertas.extend(buscar_ofertas_mercadolivre(categoria))
+            except Exception as e:
+                logger.error(f"ML falhou [{categoria}]: {e}")
 
     logger.info(f"Total bruto: {len(ofertas)} ofertas")
 

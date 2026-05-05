@@ -54,6 +54,14 @@
       <label>Intervalo entre posts (seg)</label>
       <input type="number" id="INTERVALO_ENTRE_POSTS">
       <button class="btn-blue" onclick="salvarConfig()">💾 Salvar</button>
+
+      <h3 style="margin-top:1rem">Fontes de busca</h3>
+      <div id="fontes-btns" style="display:flex;gap:.5rem;flex-wrap:wrap">
+        <button id="btn-amazon" class="btn-blue" onclick="setFontes('amazon')">🛒 Só Amazon</button>
+        <button id="btn-ml" class="btn-blue" onclick="setFontes('ml')">🛍️ Só ML</button>
+        <button id="btn-ambos" class="btn-green" onclick="setFontes('amazon,ml')">🔀 Ambas</button>
+      </div>
+      <p id="fontes-msg" style="margin:.4rem 0 0;font-size:.85rem;min-height:1em;color:#555"></p>
     </div>
 
     <!-- Categorias -->
@@ -204,7 +212,32 @@
       }, 15000);
     }
 
-    carregarStatus(); carregarConfig(); carregarCategorias(); carregarOfertas(); carregarLinks();
+    async function carregarFontes() {
+      const c = await get('/api/config');
+      const ativas = (c.FONTES_ATIVAS || 'amazon,ml').trim();
+      const map = { 'amazon': 'btn-amazon', 'ml': 'btn-ml', 'amazon,ml': 'btn-ambos', 'ml,amazon': 'btn-ambos' };
+      ['btn-amazon','btn-ml','btn-ambos'].forEach(id => {
+        const el = document.getElementById(id);
+        el.style.opacity = '0.45';
+        el.style.fontWeight = 'normal';
+      });
+      const active = map[ativas];
+      if (active) {
+        const el = document.getElementById(active);
+        el.style.opacity = '1';
+        el.style.fontWeight = 'bold';
+      }
+    }
+
+    async function setFontes(fontes) {
+      const msg = document.getElementById('fontes-msg');
+      await post('/api/fontes', {fontes});
+      msg.textContent = '✅ Fonte salva: ' + fontes;
+      carregarFontes();
+      setTimeout(() => msg.textContent = '', 3000);
+    }
+
+    carregarStatus(); carregarConfig(); carregarCategorias(); carregarOfertas(); carregarLinks(); carregarFontes();
     setInterval(carregarStatus, 15000);
     setInterval(carregarOfertas, 60000);
     setInterval(carregarLinks, 30000);

@@ -56,7 +56,7 @@ def api_ofertas():
 
 CAMPOS_PUBLICOS = ["MIN_DESCONTO", "MAX_OFERTAS_POR_RODADA",
                    "INTERVALO_ENTRE_POSTS", "RODAR_A_CADA_MINUTOS",
-                   "HORA_INICIO", "HORA_FIM", "WHATSAPP_GROUP_NAME"]
+                   "HORA_INICIO", "HORA_FIM", "WHATSAPP_GROUP_NAME", "FONTES_ATIVAS"]
 
 
 @app.route("/api/config", methods=["GET", "POST"])
@@ -122,6 +122,29 @@ def api_pausar():
 def api_forcar_rodada():
     forcar_rodada()
     return jsonify({"ok": True})
+
+
+@app.route("/api/fontes", methods=["POST"])
+@login_required
+def api_fontes():
+    data = request.json or {}
+    fontes = data.get("fontes", "amazon,ml")
+    os.environ["FONTES_ATIVAS"] = fontes
+    config_file = "config.env"
+    if os.path.exists(config_file):
+        with open(config_file) as f:
+            linhas = f.readlines()
+        found = False
+        for i, linha in enumerate(linhas):
+            if linha.strip().startswith("FONTES_ATIVAS="):
+                linhas[i] = f"FONTES_ATIVAS={fontes}\n"
+                found = True
+                break
+        if not found:
+            linhas.append(f"FONTES_ATIVAS={fontes}\n")
+        with open(config_file, "w") as f:
+            f.writelines(linhas)
+    return jsonify({"ok": True, "fontes": fontes})
 
 
 # --- WhatsApp Auth ---
