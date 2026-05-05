@@ -166,28 +166,34 @@ def buscar_url_destino(slug: str) -> str | None:
 def listar_links_com_stats() -> list[dict]:
     limite_24h = (datetime.now() - timedelta(hours=24)).isoformat()
     with _conn() as con:
-        links = con.execute(
-            "SELECT slug, url_destino, produto, criado_em FROM links ORDER BY criado_em DESC"
+        rows = con.execute(
+            """
+            SELECT
+                l.slug, l.url_destino, l.produto, l.criado_em,
+                COUNT(c.id) AS total_cliques,
+                (
+                    SELECT strftime('%H', c2.clicado_em)
+                    FROM link_cliques c2
+                    WHERE c2.slug = l.slug AND c2.clicado_em > ?
+                    GROUP BY strftime('%H', c2.clicado_em)
+                    ORDER BY COUNT(*) DESC
+                    LIMIT 1
+                ) AS hora_pico_raw
+            FROM links l
+            LEFT JOIN link_cliques c ON c.slug = l.slug
+            GROUP BY l.slug
+            ORDER BY l.criado_em DESC
+            """,
+            (limite_24h,),
         ).fetchall()
-        result = []
-        for slug, url_destino, produto, criado_em in links:
-            total = con.execute(
-                "SELECT COUNT(*) FROM link_cliques WHERE slug = ?", (slug,)
-            ).fetchone()[0]
-            hora_row = con.execute(
-                """SELECT strftime('%H', clicado_em) as hora, COUNT(*) as cnt
-                   FROM link_cliques
-                   WHERE slug = ? AND clicado_em > ?
-                   GROUP BY hora ORDER BY cnt DESC LIMIT 1""",
-                (slug, limite_24h),
-            ).fetchone()
-            hora_pico = f"{int(hora_row[0])}h-{int(hora_row[0])+1}h" if hora_row else None
-            result.append({
-                "slug": slug,
-                "url_destino": url_destino,
-                "produto": produto or "",
-                "criado_em": criado_em,
-                "total_cliques": total,
-                "hora_pico": hora_pico,
-            })
-    return result
+    return [
+        {
+            "slug": row[0],
+            "url_destino": row[1],
+            "produto": row[2] or "",
+            "criado_em": row[3],
+            "total_cliques": row[4],
+            "hora_pico": f"{int(row[5])}h-{int(row[5])+1}h" if row[5] else None,
+        }
+        for row in rows
+    ]
