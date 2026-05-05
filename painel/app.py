@@ -256,19 +256,21 @@ def api_links():
     return jsonify(listar_links_com_stats())
 
 
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
 @app.route("/instagram-posts")
 @login_required
 def instagram_posts():
-    from pathlib import Path
     hoje = datetime.now().strftime("%Y-%m-%d")
-    pasta = Path("posts") / hoje
+    pasta = os.path.join(_ROOT, "posts", hoje)
     posts = []
-    if pasta.exists():
+    if os.path.isdir(pasta):
         for i in range(1, 4):
-            img_path = pasta / f"post_{i}.jpg"
-            txt_path = pasta / f"post_{i}.txt"
-            if img_path.exists():
-                caption = txt_path.read_text(encoding="utf-8") if txt_path.exists() else ""
+            img_path = os.path.join(pasta, f"post_{i}.jpg")
+            txt_path = os.path.join(pasta, f"post_{i}.txt")
+            if os.path.exists(img_path):
+                caption = open(txt_path, encoding="utf-8").read() if os.path.exists(txt_path) else ""
                 posts.append({"indice": i, "caption": caption, "data": hoje})
     return render_template("instagram_posts.html", posts=posts, hoje=hoje)
 
@@ -282,7 +284,7 @@ def instagram_post_imagem(data, filename):
         return "invalid", 400
     if not re.match(r"^post_[123]\.jpg$", filename):
         return "invalid", 400
-    pasta = os.path.join("posts", data)
+    pasta = os.path.join(_ROOT, "posts", data)
     return send_from_directory(pasta, filename)
 
 
