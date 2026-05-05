@@ -135,6 +135,12 @@ def _aguardar_ate_proximo(horarios: list) -> datetime:
 
 
 def executar_rodada():
+    from dotenv import load_dotenv
+    load_dotenv("config.env", override=True)
+    max_ofertas = int(os.getenv("MAX_OFERTAS_POR_RODADA", "5"))
+    min_desconto = int(os.getenv("MIN_DESCONTO", "20"))
+    intervalo = int(os.getenv("INTERVALO_ENTRE_POSTS", "60"))
+
     salvar_estado("rodando")
     logger.info("=== Iniciando rodada de busca ===")
     categorias = ler_categorias()
@@ -169,7 +175,7 @@ def executar_rodada():
     logger.info(f"Total bruto: {len(ofertas)} ofertas")
 
     registrar_precos(ofertas)
-    filtradas = filtrar_melhores_ofertas(ofertas, MIN_DESCONTO)
+    filtradas = filtrar_melhores_ofertas(ofertas, min_desconto)
     logger.info(f"Após filtro desconto: {len(filtradas)}")
 
     for o in filtradas:
@@ -177,7 +183,7 @@ def executar_rodada():
     filtradas.sort(key=lambda o: o["_score"], reverse=True)
 
     novas = remover_repetidas(filtradas)
-    logger.info(f"Após dedup 24h: {len(novas)} — enviando até {MAX_OFERTAS_POR_RODADA}")
+    logger.info(f"Após dedup 24h: {len(novas)} — enviando até {max_ofertas}")
 
     # Garante 1 produto por categoria (rotatividade)
     selecionadas = []
@@ -187,14 +193,14 @@ def executar_rodada():
         if cat not in cats_usadas:
             selecionadas.append(o)
             cats_usadas.add(cat)
-        if len(selecionadas) >= MAX_OFERTAS_POR_RODADA:
+        if len(selecionadas) >= max_ofertas:
             break
     # Se não encheu, completa com categorias repetidas (melhor score)
-    if len(selecionadas) < MAX_OFERTAS_POR_RODADA:
+    if len(selecionadas) < max_ofertas:
         for o in novas:
             if o not in selecionadas:
                 selecionadas.append(o)
-            if len(selecionadas) >= MAX_OFERTAS_POR_RODADA:
+            if len(selecionadas) >= max_ofertas:
                 break
 
     enviadas = 0
@@ -205,9 +211,9 @@ def executar_rodada():
             salvar_em_historico(oferta)
             enviadas += 1
             logger.info(f"Enviado: {oferta['produto']} ({oferta['loja']}) {oferta['desconto_percentual']}% off")
-            if enviadas < MAX_OFERTAS_POR_RODADA:
-                logger.info(f"Aguardando {INTERVALO_ENTRE_POSTS}s antes do próximo post...")
-                time.sleep(INTERVALO_ENTRE_POSTS)
+            if enviadas < max_ofertas:
+                logger.info(f"Aguardando {intervalo}s antes do próximo post...")
+                time.sleep(intervalo)
 
     logger.info(f"=== Rodada concluída: {enviadas} enviadas ===")
 
