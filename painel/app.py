@@ -2,6 +2,7 @@ import os
 import sys
 import threading
 import base64
+from datetime import datetime
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, Response
@@ -253,6 +254,36 @@ def redirect_link(slug):
 @login_required
 def api_links():
     return jsonify(listar_links_com_stats())
+
+
+@app.route("/instagram-posts")
+@login_required
+def instagram_posts():
+    from pathlib import Path
+    hoje = datetime.now().strftime("%Y-%m-%d")
+    pasta = Path("posts") / hoje
+    posts = []
+    if pasta.exists():
+        for i in range(1, 4):
+            img_path = pasta / f"post_{i}.jpg"
+            txt_path = pasta / f"post_{i}.txt"
+            if img_path.exists():
+                caption = txt_path.read_text(encoding="utf-8") if txt_path.exists() else ""
+                posts.append({"indice": i, "caption": caption, "data": hoje})
+    return render_template("instagram_posts.html", posts=posts, hoje=hoje)
+
+
+@app.route("/api/instagram-posts/imagem/<data>/<filename>")
+@login_required
+def instagram_post_imagem(data, filename):
+    import re
+    from flask import send_from_directory
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$", data):
+        return "invalid", 400
+    if not re.match(r"^post_[123]\.jpg$", filename):
+        return "invalid", 400
+    pasta = os.path.join("posts", data)
+    return send_from_directory(pasta, filename)
 
 
 if __name__ == "__main__":
