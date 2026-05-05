@@ -71,6 +71,15 @@
         <tbody id="tabela-ofertas"></tbody>
       </table>
     </div>
+
+    <!-- Links rastreados -->
+    <div class="card" style="grid-column: 1 / -1;">
+      <h3>🔗 Links Rastreados</h3>
+      <table>
+        <thead><tr><th>Produto</th><th>Slug</th><th>Cliques</th><th>Pico (24h)</th><th>Criado em</th></tr></thead>
+        <tbody id="tabela-links"></tbody>
+      </table>
+    </div>
   </div>
 
   <script>
@@ -118,6 +127,23 @@
           <td>R$ ${Number(o.preco).toFixed(2)}</td>
           <td>${o.desconto || 0}%</td>
           <td>${new Date(o.data_envio).toLocaleString('pt-BR')}</td>
+        </tr>`).join('');
+    }
+
+    async function carregarLinks() {
+      const links = await get('/api/links');
+      const tbody = document.getElementById('tabela-links');
+      if (!links.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="color:#999">Nenhum link registrado ainda.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = links.map(l => `
+        <tr>
+          <td>${(l.produto || '').substring(0, 45)}</td>
+          <td><code>${l.slug}</code></td>
+          <td>${l.total_cliques}</td>
+          <td>${l.hora_pico || '—'}</td>
+          <td>${new Date(l.criado_em).toLocaleString('pt-BR')}</td>
         </tr>`).join('');
     }
 
@@ -171,8 +197,9 @@
       }, 15000);
     }
 
-    carregarStatus(); carregarConfig(); carregarCategorias(); carregarOfertas();
+    carregarStatus(); carregarConfig(); carregarCategorias(); carregarOfertas(); carregarLinks();
     setInterval(carregarStatus, 15000);
+    setInterval(carregarLinks, 30000);
   </script>
 </body>
 </html>
