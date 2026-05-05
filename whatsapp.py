@@ -143,22 +143,22 @@ def _abrir_grupo(page, nome_grupo: str):
 
 def _abrir_canal(page, nome_canal: str):
     try:
-        tab = page.locator('[data-tab="5"], [aria-label*="tualiza"], [aria-label*="hannel"]').first
+        tab = page.locator('[data-tab="5"], [aria-label*="tualiza"], [aria-label*="Channel"], [aria-label*="Canais"]').first
         tab.wait_for(state="visible", timeout=10000)
         tab.click()
         _delay()
 
-        resultado = page.locator(f'span[title="{nome_canal}"]').first
-        if resultado.count() == 0:
+        locator = page.locator(f'span[title="{nome_canal}"]')
+        if locator.count() == 0:
             caixa = page.locator('[data-tab="6"][contenteditable="true"], [data-testid="chat-list-search"]').first
             caixa.click()
             _delay()
             caixa.fill(nome_canal)
             _delay()
-            resultado = page.locator(f'span[title="{nome_canal}"]').first
-            resultado.wait_for(timeout=15000)
+            locator = page.locator(f'span[title="{nome_canal}"]')
+            locator.first.wait_for(timeout=15000)
 
-        resultado.click()
+        locator.first.click()
         _delay()
         logger.info(f"Canal '{nome_canal}' aberto")
     except Exception as e:
