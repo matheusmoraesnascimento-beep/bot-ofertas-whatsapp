@@ -15,6 +15,8 @@ if sys.stdout.encoding != "utf-8":
 
 load_dotenv("config.env")
 
+from instagram_posts import gerar_posts_instagram as _gerar_posts_ig
+
 # Config
 MIN_DESCONTO = int(os.getenv("MIN_DESCONTO", "20"))
 MAX_OFERTAS_POR_RODADA = int(os.getenv("MAX_OFERTAS_POR_RODADA", "5"))
@@ -221,6 +223,24 @@ def executar_rodada():
     logger.info(f"=== Rodada concluída: {enviadas} enviadas ===")
 
 
+def _posts_instagram_se_necessario():
+    hoje = datetime.now().strftime("%Y-%m-%d")
+    flag = f"posts/{hoje}/.gerado"
+    if os.path.exists(flag):
+        return
+    hora = datetime.now().hour
+    if hora < 8:
+        return
+    try:
+        paths = _gerar_posts_ig(3)
+        if paths:
+            os.makedirs(f"posts/{hoje}", exist_ok=True)
+            open(flag, "w").close()
+            logger.info(f"Posts Instagram gerados: {len(paths)}")
+    except Exception as e:
+        logger.error(f"Erro gerando posts Instagram: {e}")
+
+
 def main():
     init_db()
     logger.info("Bot iniciado")
@@ -243,6 +263,7 @@ def main():
             logger.error(f"Erro crítico na rodada: {e}")
             salvar_estado("erro")
 
+        _posts_instagram_se_necessario()
         _aguardar_ate_proximo(HORARIOS_EXECUCAO)
 
 
