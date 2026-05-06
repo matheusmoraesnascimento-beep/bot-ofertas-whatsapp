@@ -1,6 +1,7 @@
 import os
 import io
 import logging
+import shutil
 import subprocess
 import textwrap
 from datetime import datetime
@@ -257,8 +258,9 @@ def _gerar_imagem_reels(oferta: dict, indice: int) -> Image.Image:
 
 
 def _imagem_para_video(img_path: Path, video_path: Path, duracao: int = 10) -> bool:
+    ffmpeg_bin = shutil.which("ffmpeg") or "/usr/bin/ffmpeg"
     cmd = [
-        "ffmpeg", "-y",
+        ffmpeg_bin, "-y",
         "-loop", "1",
         "-i", str(img_path),
         "-t", str(duracao),
