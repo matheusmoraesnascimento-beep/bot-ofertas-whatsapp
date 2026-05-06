@@ -15,7 +15,7 @@ if sys.stdout.encoding != "utf-8":
 
 load_dotenv("config.env")
 
-from instagram_posts import gerar_posts_instagram as _gerar_posts_ig
+from instagram_posts import gerar_posts_instagram as _gerar_posts_ig, gerar_reels_instagram as _gerar_reels_ig
 
 # Config
 MIN_DESCONTO = int(os.getenv("MIN_DESCONTO", "20"))
@@ -225,20 +225,31 @@ def executar_rodada():
 
 def _posts_instagram_se_necessario():
     hoje = datetime.now().strftime("%Y-%m-%d")
-    flag = f"posts/{hoje}/.gerado"
-    if os.path.exists(flag):
-        return
     hora = datetime.now().hour
     if hora < 8:
         return
-    try:
-        paths = _gerar_posts_ig(3)
-        if paths:
-            os.makedirs(f"posts/{hoje}", exist_ok=True)
-            open(flag, "w").close()
-            logger.info(f"Posts Instagram gerados: {len(paths)}")
-    except Exception as e:
-        logger.error(f"Erro gerando posts Instagram: {e}")
+
+    flag_posts = f"posts/{hoje}/.gerado"
+    if not os.path.exists(flag_posts):
+        try:
+            paths = _gerar_posts_ig(3)
+            if paths:
+                os.makedirs(f"posts/{hoje}", exist_ok=True)
+                open(flag_posts, "w").close()
+                logger.info(f"Posts Instagram gerados: {len(paths)}")
+        except Exception as e:
+            logger.error(f"Erro gerando posts Instagram: {e}")
+
+    flag_reels = f"posts/{hoje}/.reels_gerado"
+    if not os.path.exists(flag_reels):
+        try:
+            reels = _gerar_reels_ig(3)
+            if reels:
+                os.makedirs(f"posts/{hoje}", exist_ok=True)
+                open(flag_reels, "w").close()
+                logger.info(f"Reels Instagram gerados: {len(reels)}")
+        except Exception as e:
+            logger.error(f"Erro gerando Reels Instagram: {e}")
 
 
 def main():
