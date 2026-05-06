@@ -5,32 +5,47 @@
   <title>Posts Instagram</title>
   <style>
     body { font-family: sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
-    h1 { color: #333; margin-bottom: 24px; }
+    h1, h2 { color: #333; }
+    h2 { margin-top: 40px; margin-bottom: 16px; }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; }
+    .grid-reels { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 24px; }
     .card { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.1); overflow: hidden; }
     .card img { width: 100%; display: block; }
+    .card video { width: 100%; display: block; background: #000; }
     .card-body { padding: 16px; }
     textarea { width: 100%; height: 140px; border: 1px solid #ddd; border-radius: 8px; padding: 8px;
                font-size: 13px; resize: vertical; box-sizing: border-box; }
-    .actions { display: flex; gap: 8px; margin-top: 12px; }
+    .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
     .btn { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
     .btn-copy { background: #3483fa; color: white; }
     .btn-dl { background: #00a650; color: white; text-decoration: none; display: inline-block; }
-    .empty { text-align: center; color: #888; margin-top: 60px; font-size: 18px; }
+    .btn-dl-video { background: #7c3aed; color: white; text-decoration: none; display: inline-block; }
+    .empty { text-align: center; color: #888; margin-top: 30px; font-size: 16px; }
     .back { display: inline-block; margin-bottom: 20px; color: #3483fa; text-decoration: none; }
+    .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+    .btn-gerar { background: #e1306c; color: white; font-size: 15px; }
+    .btn-gerar-reels { background: #7c3aed; color: white; font-size: 15px; }
+    .msg { min-height: 1.4em; margin-bottom: 16px; font-size: 14px; }
+    .badge-video { background: #7c3aed; color: white; font-size: 11px; padding: 2px 8px; border-radius: 20px; margin-left: 8px; vertical-align: middle; }
   </style>
 </head>
 <body>
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-    <a class="back" style="margin-bottom:0" href="/">&#8592; Voltar ao painel</a>
-    <button class="btn" style="background:#e1306c;color:white;font-size:15px" onclick="gerarPosts()" id="btn-gerar">
-      📸 Gerar posts agora
-    </button>
+  <div class="toolbar">
+    <a class="back" href="/">&#8592; Voltar ao painel</a>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-gerar" onclick="gerarPosts()" id="btn-gerar">
+        📸 Gerar posts agora
+      </button>
+      <button class="btn btn-gerar-reels" onclick="gerarReels()" id="btn-reels">
+        🎬 Gerar Reels agora
+      </button>
+    </div>
   </div>
   <h1>Posts Instagram &mdash; {{ hoje }}</h1>
-  <p id="gerar-msg" style="min-height:1.4em;margin-bottom:16px;font-size:14px"></p>
+  <p id="gerar-msg" class="msg"></p>
 
   {% if posts %}
+  <h2>📷 Posts (quadrado 1:1)</h2>
   <div class="grid">
     {% for post in posts %}
     <div class="card">
@@ -39,7 +54,7 @@
       <div class="card-body">
         <textarea id="caption-{{ post.indice }}">{{ post.caption }}</textarea>
         <div class="actions">
-          <button class="btn btn-copy" onclick="copiar({{ post.indice }})">Copiar caption</button>
+          <button class="btn btn-copy" onclick="copiar('caption-{{ post.indice }}')">Copiar caption</button>
           <a class="btn btn-dl"
              href="/api/instagram-posts/imagem/{{ post.data }}/post_{{ post.indice }}.jpg"
              download="post_{{ post.indice }}.jpg">Baixar imagem</a>
@@ -49,13 +64,47 @@
     {% endfor %}
   </div>
   {% else %}
-  <p class="empty">Nenhum post gerado hoje ainda.<br>
-    Posts s&atilde;o gerados automaticamente ap&oacute;s as 08h quando h&aacute; ofertas nas &uacute;ltimas 24h.</p>
+  <p class="empty">Nenhum post gerado hoje ainda.</p>
+  {% endif %}
+
+  {% if reels %}
+  <h2>🎬 Reels (vertical 9:16) <span class="badge-video">MP4 10s</span></h2>
+  <div class="grid-reels">
+    {% for reel in reels %}
+    <div class="card">
+      {% if reel.tem_video %}
+      <video controls preload="metadata"
+             src="/api/instagram-posts/reels/{{ reel.data }}/reel_{{ reel.indice }}.mp4"
+             poster="/api/instagram-posts/reels/{{ reel.data }}/reel_{{ reel.indice }}.jpg">
+      </video>
+      {% else %}
+      <img src="/api/instagram-posts/reels/{{ reel.data }}/reel_{{ reel.indice }}.jpg"
+           alt="Reel {{ reel.indice }}">
+      {% endif %}
+      <div class="card-body">
+        <textarea id="reel-caption-{{ reel.indice }}">{{ reel.caption }}</textarea>
+        <div class="actions">
+          <button class="btn btn-copy" onclick="copiar('reel-caption-{{ reel.indice }}')">Copiar caption</button>
+          <a class="btn btn-dl"
+             href="/api/instagram-posts/reels/{{ reel.data }}/reel_{{ reel.indice }}.jpg"
+             download="reel_{{ reel.indice }}.jpg">Baixar imagem</a>
+          {% if reel.tem_video %}
+          <a class="btn btn-dl-video"
+             href="/api/instagram-posts/reels/{{ reel.data }}/reel_{{ reel.indice }}.mp4"
+             download="reel_{{ reel.indice }}.mp4">Baixar vídeo</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="empty" style="margin-top:16px">Nenhum Reel gerado hoje ainda. Clique em "Gerar Reels agora".</p>
   {% endif %}
 
   <script>
-    function copiar(i) {
-      const ta = document.getElementById('caption-' + i);
+    function copiar(id) {
+      const ta = document.getElementById(id);
       ta.select();
       navigator.clipboard.writeText(ta.value).then(() => alert('Caption copiado!'));
     }
@@ -85,6 +134,34 @@
         msg.textContent = '❌ Falha na requisição';
         btn.disabled = false;
         btn.textContent = '📸 Gerar posts agora';
+      }
+    }
+
+    async function gerarReels() {
+      const btn = document.getElementById('btn-reels');
+      const msg = document.getElementById('gerar-msg');
+      btn.disabled = true;
+      btn.textContent = '⏳ Gerando Reels... (pode levar 1 min)';
+      msg.style.color = '#856404';
+      msg.textContent = 'Buscando ofertas, gerando imagens verticais e vídeos MP4...';
+      try {
+        const r = await fetch('/api/instagram-posts/gerar-reels', {method:'POST'});
+        const data = await r.json();
+        if (data.ok) {
+          msg.style.color = '#155724';
+          msg.textContent = `✅ ${data.gerados} Reels gerados! Recarregando...`;
+          setTimeout(() => location.reload(), 1500);
+        } else {
+          msg.style.color = '#721c24';
+          msg.textContent = '❌ Erro: ' + data.erro;
+          btn.disabled = false;
+          btn.textContent = '🎬 Gerar Reels agora';
+        }
+      } catch(e) {
+        msg.style.color = '#721c24';
+        msg.textContent = '❌ Falha na requisição';
+        btn.disabled = false;
+        btn.textContent = '🎬 Gerar Reels agora';
       }
     }
   </script>
