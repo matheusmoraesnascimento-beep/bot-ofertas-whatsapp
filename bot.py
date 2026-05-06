@@ -19,10 +19,9 @@ from instagram_posts import gerar_posts_instagram as _gerar_posts_ig, gerar_reel
 
 # Config
 MIN_DESCONTO = int(os.getenv("MIN_DESCONTO", "20"))
-MAX_OFERTAS_POR_RODADA = int(os.getenv("MAX_OFERTAS_POR_RODADA", "5"))
+MAX_OFERTAS_POR_RODADA = int(os.getenv("MAX_OFERTAS_POR_RODADA", "3"))
 INTERVALO_ENTRE_POSTS = int(os.getenv("INTERVALO_ENTRE_POSTS", "60"))
-# Horários fixos de execução (Brasília) — ex: "8,18"
-HORARIOS_EXECUCAO = [int(h) for h in os.getenv("HORARIOS_EXECUCAO", "8,18").split(",") if h.strip()]
+HORARIOS_EXECUCAO = [int(h) for h in os.getenv("HORARIOS_EXECUCAO", "0,2,4,6,8,10,12,14,16,18,20,22").split(",") if h.strip()]
 
 BASE_URL = os.getenv("BASE_URL", "http://localhost:5000").rstrip("/")
 
