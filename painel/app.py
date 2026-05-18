@@ -10,7 +10,8 @@ from dotenv import load_dotenv
 
 load_dotenv("config.env")
 
-from db import init_db, listar_ofertas, buscar_url_destino, registrar_clique, listar_links_com_stats
+from db import (init_db, listar_ofertas, buscar_url_destino, registrar_clique,
+                listar_links_com_stats, buscar_oferta_por_slug, listar_ofertas_publicas)
 from painel.auth import login_required, verificar_senha
 from painel.state import ler_estado, pausar, forcar_rodada
 
@@ -248,6 +249,20 @@ def redirect_link(slug):
         return "Link não encontrado", 404
     registrar_clique(slug)
     return redirect(url, code=302)
+
+
+@app.route("/oferta/<slug>")
+def oferta_publica(slug):
+    oferta = buscar_oferta_por_slug(slug)
+    if not oferta:
+        return "Oferta não encontrada", 404
+    return render_template("oferta_publica.html", oferta=oferta)
+
+
+@app.route("/ofertas")
+def ofertas_publicas():
+    ofertas = listar_ofertas_publicas(50)
+    return render_template("ofertas_publicas.html", ofertas=ofertas)
 
 
 @app.route("/api/links")

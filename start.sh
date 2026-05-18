@@ -16,7 +16,7 @@ if [ ! -d "$SESSION_DIR/Default" ]; then
 fi
 
 echo "Rodando agora..."
-python3 -c "
+xvfb-run --auto-servernum python3 -c "
 import os
 from dotenv import load_dotenv
 load_dotenv('config.env')

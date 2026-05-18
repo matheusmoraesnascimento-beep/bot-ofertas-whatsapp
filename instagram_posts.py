@@ -145,9 +145,11 @@ def _gerar_caption(oferta: dict) -> str:
     linhas.extend([
         f"📍 {loja}",
         "",
-        "Comenta QUERO que mando o link no direct 👇",
+        "🔗 LINK NA BIO — clica e entra no grupo do WhatsApp pra receber em tempo real",
         "",
-        f"#oferta #promocao #{loja_tag} #ofertas #desconto #economize",
+        "⚡ Bot rastreia 24/7. Curadoria humana. Sem spam.",
+        "",
+        f"#oferta #promocao #{loja_tag} #ofertas #desconto #economize #ofertasdodia #achados",
     ])
     return "\n".join(linhas)
 

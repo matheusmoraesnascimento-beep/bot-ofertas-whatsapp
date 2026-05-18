@@ -12,12 +12,10 @@ rm -f "$SESSION_DIR/SingletonLock" "$SESSION_DIR/SingletonCookie" "$SESSION_DIR/
 source ~/.bashrc 2>/dev/null || true
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') [CRON] Iniciando rodada" >> "$LOG_FILE"
-python3 -c "
+xvfb-run --auto-servernum python3 -c "
 import os
 from dotenv import load_dotenv
 load_dotenv('config.env')
-
-# Força uma única rodada
 import bot
 bot.executar_rodada()
 " >> "$LOG_FILE" 2>&1

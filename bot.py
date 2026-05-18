@@ -4,6 +4,7 @@ import re
 import time
 import random
 import logging
+import subprocess
 import unicodedata
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
@@ -78,7 +79,7 @@ def montar_mensagem(oferta: dict) -> str:
 
     slug = gerar_slug(oferta["produto"], oferta.get("loja", ""))
     criar_ou_buscar_link(slug, oferta["link_afiliado"], oferta["produto"])
-    link_rastreado = f"{BASE_URL}/r/{slug}"
+    link_rastreado = f"{BASE_URL}/oferta/{slug}"
 
     if preco_antigo:
         economia = preco_antigo - preco_atual
@@ -220,6 +221,50 @@ def executar_rodada():
                 time.sleep(intervalo)
 
     logger.info(f"=== Rodada concluída: {enviadas} enviadas ===")
+
+    if enviadas > 0:
+        _publicar_blog()
+
+
+def _publicar_blog():
+    try:
+        from gerar_blog import gerar
+        n = gerar(BASE_URL)
+        logger.info(f"Blog regenerado: {n} páginas")
+    except Exception as e:
+        logger.error(f"Erro gerando blog: {e}")
+        return
+
+    try:
+        blog_repo = os.path.expanduser(os.getenv("BLOG_REPO", "~/bot-ofertas-blog"))
+        env = os.environ.copy()
+        subprocess.run(
+            ["git", "-C", blog_repo, "add", "-A"],
+            capture_output=True, text=True, timeout=30, env=env,
+        )
+        status = subprocess.run(
+            ["git", "-C", blog_repo, "diff", "--cached", "--quiet"],
+            timeout=10,
+        )
+        if status.returncode == 0:
+            logger.info("Blog: nada novo para commitar")
+            return
+
+        subprocess.run(
+            ["git", "-C", blog_repo, "commit", "-m",
+             f"blog: atualiza ofertas {datetime.now().strftime('%Y-%m-%d %H:%M')}"],
+            capture_output=True, text=True, timeout=30, env=env,
+        )
+        push = subprocess.run(
+            ["git", "-C", blog_repo, "push", "origin", "main"],
+            capture_output=True, text=True, timeout=120, env=env,
+        )
+        if push.returncode == 0:
+            logger.info("Blog publicado no GitHub Pages")
+        else:
+            logger.error(f"git push falhou: {push.stderr[:300]}")
+    except Exception as e:
+        logger.error(f"Erro publicando blog: {e}")
 
 
 def _posts_instagram_se_necessario():

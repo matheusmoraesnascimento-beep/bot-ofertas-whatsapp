@@ -1,0 +1,68 @@
+<!--
+  Layout do CATÁLOGO (página inicial /).
+  Cole no CodePen separado. Cards de ofertas em grid.
+-->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Catálogo</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #f5f5f5; padding: 16px; margin: 0; }
+  .header { max-width: 900px; margin: 0 auto 20px;
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            color: #fff; padding: 24px; border-radius: 12px; text-align: center; }
+  .header h1 { font-size: 24px; margin-bottom: 6px; }
+  .grid { max-width: 900px; margin: 0 auto;
+          display: grid; gap: 14px;
+          grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+  .card { background: #fff; border-radius: 10px; overflow: hidden;
+          box-shadow: 0 2px 8px rgba(0,0,0,.06); text-decoration: none; color: inherit;
+          display: flex; flex-direction: column; }
+  .card .img { background: #fafafa; padding: 16px; text-align: center; height: 180px;
+               display: flex; align-items: center; justify-content: center; }
+  .card .img img { max-width: 100%; max-height: 100%; }
+  .card .body { padding: 12px 14px; flex: 1; }
+  .card .badge { background: #d32f2f; color: #fff; padding: 2px 8px; border-radius: 4px;
+                 font-size: 11px; font-weight: bold; display: inline-block; margin-bottom: 6px; }
+  .card .loja-tag { background: #eee; color: #555; padding: 2px 8px; border-radius: 4px;
+                    font-size: 11px; margin-left: 4px; }
+  .card .titulo { font-size: 13px; margin-bottom: 8px;
+                  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+                  overflow: hidden; }
+  .card .preco-antigo { color: #999; text-decoration: line-through; font-size: 12px; }
+  .card .preco-atual { font-size: 20px; font-weight: bold; color: #2e7d32; }
+  .card .tempo { color: #999; font-size: 11px; margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🔥 Ofertas do Dia</h1>
+  <p data-tpl="subtitulo">Os melhores descontos selecionados</p>
+</div>
+
+<div class="grid" data-tpl="cards-grid">
+
+  <!-- EXEMPLO DE CARD - vai ser repetido pra cada oferta -->
+  <a class="card" href="#" data-tpl="card-link">
+    <div class="img">
+      <img src="https://m.media-amazon.com/images/I/71YlSEoqXuL._AC_SL1500_.jpg"
+           data-tpl="imagem" alt="">
+    </div>
+    <div class="body">
+      <span class="badge" data-tpl="badge">-49%</span>
+      <span class="loja-tag" data-tpl="loja">Amazon</span>
+      <div class="titulo" data-tpl="produto">Air Fryer Mondial 4L Antiaderente 1500W</div>
+      <div class="preco-antigo" data-tpl="preco-antigo">R$ 599,00</div>
+      <div class="preco-atual" data-tpl="preco-atual">R$ 299,00</div>
+      <div class="tempo" data-tpl="tempo">há 2 horas</div>
+    </div>
+  </a>
+
+  <!-- repita esse bloco no Codepen pra ver como fica com vários -->
+
+</div>
+
+</body>
+</html>

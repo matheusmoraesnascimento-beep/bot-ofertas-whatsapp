@@ -7,3 +7,11 @@ debug_*.png
 bot.log
 bot.pid
 config.env
+tunnel.log
+bot_state.json
+posts/
+docs/
+_auth.log
+.whatsapp_auth_done
+ofertas.db
+ofertas_enviadas.csv

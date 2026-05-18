@@ -80,12 +80,21 @@ def buscar_ofertas_shopee(categoria):
         ofertas = []
         for node in nodes:
             try:
-                preco_atual = node.get("priceMin")
-                if not preco_atual:
+                preco_raw = node.get("priceMin")
+                if not preco_raw:
                     continue
+                
+                # Shopee API retorna preços multiplicados por 100.000 (unidades micro)
+                preco_atual = float(preco_raw) / 100000
 
                 desconto_raw = node.get("priceDiscountRate", 0)
-                desconto = round(float(desconto_raw) * 100, 1) if desconto_raw else 0
+                # priceDiscountRate costuma vir como inteiro (ex: 15 para 15%)
+                # Se vier como float (ex: 0.15), multiplicamos por 100
+                desconto = float(desconto_raw)
+                if 0 < desconto < 1:
+                    desconto = round(desconto * 100, 1)
+                else:
+                    desconto = round(desconto, 1)
 
                 preco_antigo = None
                 if desconto > 0:

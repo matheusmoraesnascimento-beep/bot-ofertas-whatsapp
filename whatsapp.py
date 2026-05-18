@@ -117,6 +117,19 @@ def enviar_para_grupo_whatsapp(mensagem: str, imagem_url: str = None):
 
 
 def _abrir_grupo(page, nome_grupo: str):
+    usar_primeiro = os.getenv("WHATSAPP_USAR_PRIMEIRO_FIXADO", "false").lower() == "true"
+
+    if usar_primeiro:
+        try:
+            primeiro = page.locator('#pane-side [role="listitem"], div[aria-label="Lista de conversas"] [role="listitem"]').first
+            primeiro.wait_for(state="visible", timeout=15000)
+            primeiro.click()
+            _delay()
+            logger.info("Grupo aberto: primeiro item da lista (fixado)")
+            return
+        except Exception as e:
+            logger.warning(f"Falha abrindo primeiro fixado: {e} — fallback para busca")
+
     try:
         resultado = page.locator(f'span[title="{nome_grupo}"]').first
         if resultado.count() > 0:

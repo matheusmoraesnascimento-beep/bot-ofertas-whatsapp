@@ -1,0 +1,74 @@
+<!--
+  COLE NO CODEPEN (https://codepen.io/pen/)
+  Esse é o layout de UMA oferta individual.
+  Edite cores, fontes, espaçamento, animações como quiser.
+  Mantenha os atributos data-* — eu uso eles pra injetar dados reais.
+-->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Oferta</title>
+<style>
+  /* === EDITE AQUI === */
+  body { font-family: system-ui, sans-serif; background: #f5f5f5; padding: 20px; }
+  .container { max-width: 600px; margin: 0 auto; background: #fff; border-radius: 12px;
+               box-shadow: 0 2px 12px rgba(0,0,0,.08); overflow: hidden; }
+  .header { background: linear-gradient(135deg, #ff6b35, #f7931e); color: #fff;
+            padding: 16px 20px; }
+  .header a { color: #fff; text-decoration: none; font-weight: bold; }
+  .img-wrap { background: #fafafa; padding: 24px; text-align: center; }
+  .img-wrap img { max-width: 100%; max-height: 320px; }
+  .content { padding: 20px; }
+  .badge { display: inline-block; background: #d32f2f; color: #fff;
+           padding: 4px 10px; border-radius: 4px; font-weight: bold;
+           font-size: 13px; margin-bottom: 12px; }
+  h1 { font-size: 18px; margin-bottom: 16px; }
+  .preco-antigo { color: #999; text-decoration: line-through; font-size: 16px; }
+  .preco-atual { font-size: 32px; font-weight: bold; color: #2e7d32; }
+  .economia { color: #d32f2f; font-weight: bold; font-size: 14px; }
+  .loja { color: #666; font-size: 14px; margin: 8px 0 20px; }
+  .btn { display: block; background: #ff9900; color: #111; text-decoration: none;
+         text-align: center; padding: 14px; border-radius: 8px;
+         font-weight: bold; font-size: 16px; }
+  .disclaimer { font-size: 11px; color: #888; padding: 12px 20px;
+                border-top: 1px solid #eee; }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <div class="header">
+    <a href="#" data-tpl="link-home">← Todas as Ofertas</a>
+  </div>
+
+  <div class="img-wrap">
+    <img src="https://m.media-amazon.com/images/I/71YlSEoqXuL._AC_SL1500_.jpg"
+         alt="Produto" data-tpl="imagem">
+  </div>
+
+  <div class="content">
+    <div class="badge" data-tpl="badge-desconto">-49% OFF</div>
+    <h1 data-tpl="produto">Air Fryer Mondial 4L Antiaderente 1500W</h1>
+
+    <div class="preco-antigo" data-tpl="preco-antigo">De R$ 599,00</div>
+    <div class="preco-atual" data-tpl="preco-atual">R$ 299,00</div>
+    <div class="economia" data-tpl="economia">Você economiza R$ 300,00</div>
+
+    <div class="loja">em <span data-tpl="loja">Amazon</span></div>
+
+    <a class="btn" href="#" data-tpl="link-afiliado">
+      Ver oferta em <span data-tpl="loja-btn">Amazon</span> →
+    </a>
+  </div>
+
+  <div class="disclaimer">
+    Como Associado, ganho comissões sobre compras qualificadas.
+    Preços e disponibilidade sujeitos a alteração.
+  </div>
+
+</div>
+
+</body>
+</html>
