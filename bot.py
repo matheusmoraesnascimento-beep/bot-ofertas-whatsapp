@@ -208,12 +208,20 @@ def executar_rodada():
             if len(selecionadas) >= max_ofertas:
                 break
 
+    # Pré-popula DB + publica blog ANTES de enviar WhatsApp.
+    # Garante que página /oferta/<slug>/ existe quando user clica no link da mensagem.
+    for oferta in selecionadas:
+        salvar_em_historico(oferta)
+
+    _publicar_blog()
+    logger.info("Aguardando 45s para GitHub Pages buildar antes de enviar WhatsApp...")
+    time.sleep(45)
+
     enviadas = 0
     for oferta in selecionadas:
         mensagem = montar_mensagem(oferta)
         sucesso = enviar_para_grupo_whatsapp(mensagem, imagem_url=oferta.get("imagem"))
         if sucesso:
-            salvar_em_historico(oferta)
             enviadas += 1
             logger.info(f"Enviado: {oferta['produto']} ({oferta['loja']}) {oferta['desconto_percentual']}% off")
             if enviadas < max_ofertas:
@@ -221,9 +229,6 @@ def executar_rodada():
                 time.sleep(intervalo)
 
     logger.info(f"=== Rodada concluída: {enviadas} enviadas ===")
-
-    if enviadas > 0:
-        _publicar_blog()
 
 
 def _publicar_blog():
