@@ -81,16 +81,18 @@ def _wa_floating():
 def _wa_banner_section():
     if not WA_LINK:
         return ""
-    return f'''<section class="container" style="margin:40px 0">
+    return f'''<section class="container" style="margin-top:40px;margin-bottom:40px">
   <div style="background:linear-gradient(135deg,#075e54 0%,#128c7e 50%,#25d366 100%);color:#fff;
               border-radius:28px;padding:56px 32px;position:relative;overflow:hidden;text-align:center">
     <div style="position:absolute;right:-60px;top:-60px;width:320px;height:320px;
                 background:radial-gradient(circle,rgba(255,255,255,.12),transparent 70%);pointer-events:none"></div>
     <div style="position:absolute;left:-60px;bottom:-60px;width:280px;height:280px;
                 background:radial-gradient(circle,rgba(255,255,255,.08),transparent 70%);pointer-events:none"></div>
-    <div style="position:relative;max-width:680px;margin:0 auto">
-      <div style="font-size:64px;line-height:1;margin-bottom:20px">📲</div>
-      <div class="eyebrow" style="color:rgba(255,255,255,.85);justify-content:center;display:inline-flex;align-items:center">
+    <div style="position:relative;max-width:680px;margin:0 auto;display:flex;flex-direction:column;align-items:center;text-align:center">
+      <div style="width:88px;height:88px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;margin-bottom:24px;box-shadow:0 12px 28px -8px rgba(0,0,0,.25)">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="#25d366"><path d="M20.5 3.5A11 11 0 0 0 3.4 17.2L2 22l4.9-1.3a11 11 0 0 0 13.6-17.2zM12 20a8 8 0 0 1-4.1-1.1l-.3-.2-2.9.8.8-2.8-.2-.3A8 8 0 1 1 20 12a8 8 0 0 1-8 8zm4.4-6c-.2-.1-1.4-.7-1.6-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.5 6.5 0 0 1-3.3-2.9c-.2-.4 0-.5.2-.7l.4-.5c.1-.1.2-.3.3-.5 0-.2 0-.4-.1-.5l-.8-1.8c-.2-.4-.4-.4-.6-.4h-.5c-.2 0-.5 0-.7.3-.3.3-1 1-1 2.5s1 2.9 1.2 3.1c.1.2 2.1 3.3 5.2 4.6.7.3 1.3.5 1.7.6.7.2 1.3.2 1.8.1.6-.1 1.7-.7 1.9-1.4.2-.6.2-1.2.2-1.3-.1-.1-.3-.2-.6-.3z"/></svg>
+      </div>
+      <div class="eyebrow" style="color:rgba(255,255,255,.85);display:inline-flex;align-items:center;justify-content:center">
         <span class="dot" style="background:#fff"></span>Grupo Privado WhatsApp · ao vivo
       </div>
       <h2 style="font-family:var(--display);font-size:clamp(36px,4.4vw,56px);line-height:0.98;letter-spacing:-0.025em;margin:14px 0 16px;font-weight:400">
