@@ -51,8 +51,10 @@ def filtrar_melhores_ofertas(ofertas, min_desconto=None):
     logger = logging.getLogger(__name__)
     from bot import MIN_DESCONTO
     min_desc = min_desconto if min_desconto is not None else MIN_DESCONTO
+    max_desc = int(os.getenv("MAX_DESCONTO", "90"))
+    preco_max = float(os.getenv("PRECO_MAX", "1000"))
 
-    cortes = {"sem_link_img": 0, "desconto_baixo": 0, "rating_baixo": 0, "poucas_reviews": 0, "blacklist": 0}
+    cortes = {"sem_link_img": 0, "desconto_baixo": 0, "desconto_alto": 0, "preco_alto": 0, "rating_baixo": 0, "poucas_reviews": 0, "blacklist": 0}
     validas = []
     for o in ofertas:
         if not o.get("link_afiliado") or not o.get("imagem"):
@@ -61,8 +63,15 @@ def filtrar_melhores_ofertas(ofertas, min_desconto=None):
         if _tem_blacklist(o.get("produto", "")):
             cortes["blacklist"] += 1
             continue
-        if o.get("desconto_percentual", 0) < min_desc:
+        desc = o.get("desconto_percentual", 0)
+        if desc < min_desc:
             cortes["desconto_baixo"] += 1
+            continue
+        if desc > max_desc:
+            cortes["desconto_alto"] += 1
+            continue
+        if o.get("preco_atual", 0) > preco_max:
+            cortes["preco_alto"] += 1
             continue
         if o.get("loja") == "Amazon":
             rating = o.get("rating")
