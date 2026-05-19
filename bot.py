@@ -185,6 +185,10 @@ def executar_rodada():
     novas = remover_repetidas(filtradas)
     logger.info(f"Após dedup 48h: {len(novas)} — enviando até {max_ofertas}")
 
+    if not novas and filtradas:
+        logger.warning("Dedup zerou — usando filtradas ignorando histórico recente")
+        novas = list(filtradas)
+
     # Pega os top 3x e embaralha para variar sem perder qualidade
     pool = novas[:max_ofertas * 3]
     random.shuffle(pool)
