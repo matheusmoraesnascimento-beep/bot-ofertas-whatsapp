@@ -1,0 +1,34 @@
+name: Deploy to Lightsail
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-lightsail
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH deploy
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.LIGHTSAIL_HOST }}
+          username: ${{ secrets.LIGHTSAIL_USER }}
+          key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+          port: 22
+          script_stop: true
+          script: |
+            set -e
+            cd ~/bot-ofertas-whatsapp
+            git fetch --all
+            git reset --hard origin/master
+            if [ -f venv/bin/pip ] && [ -f requirements.txt ]; then
+              venv/bin/pip install -q -r requirements.txt
+            fi
+            sudo systemctl restart bot-ofertas
+            sleep 3
+            sudo systemctl is-active --quiet bot-ofertas && echo "bot-ofertas ATIVO" || (sudo journalctl -u bot-ofertas -n 30 --no-pager; exit 1)
