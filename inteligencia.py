@@ -43,7 +43,14 @@ def calcular_score(oferta: dict) -> float:
 
     reviews_norm = min(reviews, 10000) / 10000
 
-    score = (economia * 0.5 + desconto * 0.3 + rating * 5 + reviews_norm * 10) * bonus_minimo
+    produto = (oferta.get("produto") or "").lower()
+    boost_foco = 1.0
+    for termo in ("fralda", "lenco umedecido", "lenço umedecido"):
+        if termo in produto:
+            boost_foco = 1.8
+            break
+
+    score = (economia * 0.5 + desconto * 0.3 + rating * 5 + reviews_norm * 10) * bonus_minimo * boost_foco
     return round(score, 2)
 
 
